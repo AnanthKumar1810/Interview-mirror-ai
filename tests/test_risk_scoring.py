@@ -57,3 +57,24 @@ def test_basic_technical_misconception_is_flagged_without_claiming_verified_fact
     assert 'known_metric_confusion' in codes
     assert 'data_leakage_claim' in codes
     assert result['factual_assessment'] == 'not_verified'
+
+
+def test_unique_word_salad_cannot_earn_a_strong_practice_score():
+    q = QUESTION_BANK['ai'][0]
+    answer = ('First project model dataset training accuracy validation feature selection '
+              'baseline pipeline deployment monitoring evaluation inference improved measured '
+              '92 percent results compared tested reviewed final')
+    result = evaluate_robust(answer, q, 'en-IN', 'ai', 0)
+    assert result['score'] < 60
+    assert any(flag['code'] == 'disconnected_keyword_list' for flag in result['risk_flags'])
+    assert all(flag['quote'] in answer for flag in result['risk_flags'])
+
+
+def test_coherent_explanation_is_not_flagged_as_keyword_list():
+    q = QUESTION_BANK['ai'][0]
+    answer = ('I trained a baseline model on a cleaned dataset because the original labels were noisy. '
+              'Then I compared validation accuracy across three runs, documented the result, and checked '
+              'whether the improvement held on unseen samples.')
+    result = evaluate_robust(answer, q, 'en-IN', 'ai', 0)
+    assert not any(flag['code'] == 'disconnected_keyword_list' for flag in result['risk_flags'])
+
