@@ -155,9 +155,13 @@ class SQLiteStore:
         result = []
         for row in rows:
             state = json.loads(row['state_json'])
+            scores = [answer['feedback']['score'] for answer in state['answers'] if isinstance(answer.get('feedback', {}).get('score'), (int, float))]
             result.append({'session_id': row['id'], 'track': state['track'],
                            'language': state['language'],
                            'answered': len(state['answers']),
+                           'completed': len(state['answers']) >= 3,
+                           'average_score': round(sum(scores) / len(scores)) if scores else None,
+                           'modified_at': row['modified_at'],
                            'created': state['created']})
         return result
 
@@ -177,3 +181,4 @@ class SQLiteStore:
             sessions = db.execute('DELETE FROM interviews WHERE expires_at<=?', (now,)).rowcount
             tokens = db.execute('DELETE FROM revoked_tokens WHERE expires_at<=?', (now,)).rowcount
         return {'expired_sessions': sessions, 'expired_tokens': tokens}
+
