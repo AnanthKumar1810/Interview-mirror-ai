@@ -6,6 +6,7 @@ use ``async with AsyncGnaniClient(...)`` to close owned HTTP connections.
 from __future__ import annotations
 
 import io
+import json
 import os
 import wave
 
@@ -62,13 +63,17 @@ class AsyncGnaniClient:
         except httpx.RequestError as exc:
             raise GnaniError("Could not reach Gnani provider.") from exc
 
-    async def transcribe(self, audio_wav: bytes, language: str) -> dict:
+    async def transcribe(self, audio_wav: bytes, language: str, bias_terms: list[str] | None = None) -> dict:
         if language not in VOICE:
             raise GnaniError("Unsupported transcription language.")
+        data = {"language_code": language, "format": "transcribe"}
+        terms = list(dict.fromkeys(term for term in (bias_terms or []) if term.isascii() and term.isalpha() and 4 <= len(term) <= 40))[:100]
+        if terms:
+            data.update({"bias_list": json.dumps(terms), "bias_score": "1.0"})
         response = await self._post(
             STT_URL,
             files={"audio_file": ("candidate.wav", audio_wav, "audio/wav")},
-            data={"language_code": language, "format": "transcribe"},
+            data=data,
         )
         try:
             payload = response.json()
@@ -116,3 +121,4 @@ class AsyncGnaniClient:
         if not valid:
             raise GnaniError("Gnani Timbre returned invalid WAV audio.")
         return raw
+
