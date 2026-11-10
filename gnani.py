@@ -9,6 +9,7 @@ Important: this is a SERVER-SIDE API client. Never send the Gnani key to the bro
 from __future__ import annotations
 
 import os
+import json
 import httpx
 
 STT_URL = "https://api.vachana.ai/stt/v3"
@@ -62,15 +63,21 @@ class GnaniClient:
         except httpx.RequestError as exc:
             raise GnaniError("Could not reach Gnani; check your network or provider availability.") from exc
 
-    def transcribe(self, audio_wav: bytes, language: str) -> dict:
+    def transcribe(self, audio_wav: bytes, language: str, bias_terms: list[str] | None = None) -> dict:
         if language not in VOICE:
             raise GnaniError("Unsupported transcription language.")
         # Official docs: omit model for default Prisma v2.5. The provider only
         # needs audio_file and language_code; format=transcribe cleans punctuation.
+        data = {"language_code": language, "format": "transcribe"}
+        # Prisma v2.5: single letter-only words, paired with an allowed score.
+        # Keep the list small and review the resulting transcript before scoring.
+        terms = list(dict.fromkeys(term for term in (bias_terms or []) if term.isascii() and term.isalpha() and 4 <= len(term) <= 40))[:100]
+        if terms:
+            data.update({"bias_list": json.dumps(terms), "bias_score": "1.0"})
         response = self._post(
             STT_URL,
             files={"audio_file": ("candidate.wav", audio_wav, "audio/wav")},
-            data={"language_code": language, "format": "transcribe"},
+            data=data,
         )
         try:
             payload = response.json()
@@ -121,3 +128,4 @@ class GnaniClient:
         if not valid:
             raise GnaniError("Gnani Timbre did not return a valid WAV recording.")
         return data
+
