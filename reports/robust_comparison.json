@@ -1,0 +1,121 @@
+{
+  "dataset_id": "synthetic-practice-review-queue-v1",
+  "dataset_sha256": "c53ab868b3c85153e10e537b81d05a8c48f7026e2c1d8eaab92d1ef377cb68e4",
+  "n_cases": 9,
+  "n_human_reviewed": 0,
+  "human_mae": null,
+  "diagnostic_split": {
+    "dev_ids": [
+      "agentic_en_empty",
+      "agentic_en_keyword_stuffing",
+      "agentic_en_strong",
+      "agentic_te_terms",
+      "software_hi_short"
+    ],
+    "heldout_ids": [
+      "ai_en_false_claim",
+      "ai_en_measurement",
+      "ai_te_short",
+      "software_en_debugging"
+    ],
+    "warning": "Split defined for reproducibility but the tiny synthetic corpus has already been inspected. This is not blinded generalization evidence."
+  },
+  "synthetic_risk_probes": {
+    "ids": [
+      "agentic_en_keyword_stuffing",
+      "ai_en_false_claim"
+    ],
+    "high_score_threshold": 70,
+    "baseline_high_scores": 1,
+    "improved_high_scores": 0,
+    "total_probes": 2
+  },
+  "stability": {
+    "baseline_max_std": 0.0,
+    "improved_max_std": 0.0
+  },
+  "cases": [
+    {
+      "id": "agentic_en_strong",
+      "split": "diagnostic_dev",
+      "baseline_score": 93.0,
+      "improved_score": 93.0,
+      "delta": 0.0,
+      "review_status": "unreviewed"
+    },
+    {
+      "id": "agentic_en_empty",
+      "split": "diagnostic_dev",
+      "baseline_score": 2.0,
+      "improved_score": 2.0,
+      "delta": 0.0,
+      "review_status": "unreviewed"
+    },
+    {
+      "id": "agentic_en_keyword_stuffing",
+      "split": "diagnostic_dev",
+      "baseline_score": 63.0,
+      "improved_score": 40.0,
+      "delta": -23.0,
+      "review_status": "unreviewed"
+    },
+    {
+      "id": "ai_en_measurement",
+      "split": "diagnostic_heldout",
+      "baseline_score": 82.0,
+      "improved_score": 82.0,
+      "delta": 0.0,
+      "review_status": "unreviewed"
+    },
+    {
+      "id": "ai_en_false_claim",
+      "split": "diagnostic_heldout",
+      "baseline_score": 82.0,
+      "improved_score": 43.0,
+      "delta": -39.0,
+      "review_status": "unreviewed"
+    },
+    {
+      "id": "software_en_debugging",
+      "split": "diagnostic_heldout",
+      "baseline_score": 61.0,
+      "improved_score": 61.0,
+      "delta": 0.0,
+      "review_status": "unreviewed"
+    },
+    {
+      "id": "agentic_te_terms",
+      "split": "diagnostic_dev",
+      "baseline_score": 88.0,
+      "improved_score": 88.0,
+      "delta": 0.0,
+      "review_status": "unreviewed"
+    },
+    {
+      "id": "ai_te_short",
+      "split": "diagnostic_heldout",
+      "baseline_score": 56.0,
+      "improved_score": 56.0,
+      "delta": 0.0,
+      "review_status": "unreviewed"
+    },
+    {
+      "id": "software_hi_short",
+      "split": "diagnostic_dev",
+      "baseline_score": 54.0,
+      "improved_score": 54.0,
+      "delta": 0.0,
+      "review_status": "unreviewed"
+    }
+  ],
+  "gate": {
+    "passed": true,
+    "failures": []
+  },
+  "limitations": [
+    "No human-reviewed labels: accuracy, MAE and agreement are UNMEASURABLE.",
+    "Lexical/rule-based safeguards are not general factual verification.",
+    "Measured scorer-call latency is not voice pipeline latency.",
+    "No live Gnani or local Ollama requests are made by this benchmark."
+  ]
+}

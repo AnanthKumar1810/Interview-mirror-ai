@@ -1,0 +1,5 @@
+# OPTIONAL. DeepFilterNet3 is not needed for the default spectral baseline.
+# Install torch for your OS/Python/GPU before installing this file.
+# On some Windows/Python 3.13 configurations the binary dependency may be unavailable.
+-r requirements.txt
+deepfilternet==0.5.6

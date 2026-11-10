@@ -1,0 +1,325 @@
+{
+  "schema_version": 1,
+  "dataset_id": "synthetic-practice-review-queue-v1",
+  "dataset_sha256": "c53ab868b3c85153e10e537b81d05a8c48f7026e2c1d8eaab92d1ef377cb68e4",
+  "scorer_name": "transcript_heuristic_v2",
+  "summary": {
+    "n_cases": 9,
+    "repeat_count": 5,
+    "total_scoring_calls": 45,
+    "mean_within_case_score_std": 0.0,
+    "max_within_case_score_std": 0.0,
+    "human_reviewed_cases": 0,
+    "mae_to_human": null,
+    "signed_bias_to_human": null,
+    "dimension_mae_to_human": null
+  },
+  "cases": [
+    {
+      "id": "agentic_en_strong",
+      "track": "agentic",
+      "language": "en-IN",
+      "review_status": "unreviewed",
+      "mean_score": 93.0,
+      "score_std": 0.0,
+      "min_score": 93.0,
+      "max_score": 93.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 25.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 35.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 13.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.20966259997976522,
+        "p95_nearest_rank": 0.7299439999997048
+      },
+      "human_reference": null
+    },
+    {
+      "id": "agentic_en_empty",
+      "track": "agentic",
+      "language": "en-IN",
+      "review_status": "unreviewed",
+      "mean_score": 2.0,
+      "score_std": 0.0,
+      "min_score": 2.0,
+      "max_score": 2.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 0.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 0.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 2.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.30168600000024526,
+        "p95_nearest_rank": 1.0393900000167378
+      },
+      "human_reference": null
+    },
+    {
+      "id": "agentic_en_keyword_stuffing",
+      "track": "agentic",
+      "language": "en-IN",
+      "review_status": "unreviewed",
+      "mean_score": 63.0,
+      "score_std": 0.0,
+      "min_score": 63.0,
+      "max_score": 63.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 19.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 11.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 13.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.11066300000948104,
+        "p95_nearest_rank": 0.1195660000234966
+      },
+      "human_reference": null
+    },
+    {
+      "id": "ai_en_measurement",
+      "track": "ai",
+      "language": "en-IN",
+      "review_status": "unreviewed",
+      "mean_score": 82.0,
+      "score_std": 0.0,
+      "min_score": 82.0,
+      "max_score": 82.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 25.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 30.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 7.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.14356899998801964,
+        "p95_nearest_rank": 0.23736899998993977
+      },
+      "human_reference": null
+    },
+    {
+      "id": "ai_en_false_claim",
+      "track": "ai",
+      "language": "en-IN",
+      "review_status": "unreviewed",
+      "mean_score": 82.0,
+      "score_std": 0.0,
+      "min_score": 82.0,
+      "max_score": 82.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 25.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 35.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 15.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 7.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.12808079999331312,
+        "p95_nearest_rank": 0.1510430000166707
+      },
+      "human_reference": null
+    },
+    {
+      "id": "software_en_debugging",
+      "track": "software",
+      "language": "en-IN",
+      "review_status": "unreviewed",
+      "mean_score": 61.0,
+      "score_std": 0.0,
+      "min_score": 61.0,
+      "max_score": 61.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 21.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.17199919998347468,
+        "p95_nearest_rank": 0.27052799998728005
+      },
+      "human_reference": null
+    },
+    {
+      "id": "agentic_te_terms",
+      "track": "agentic",
+      "language": "te-IN",
+      "review_status": "unreviewed",
+      "mean_score": 88.0,
+      "score_std": 0.0,
+      "min_score": 88.0,
+      "max_score": 88.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 25.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 30.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 13.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.19090280001137216,
+        "p95_nearest_rank": 0.2520510000181275
+      },
+      "human_reference": null
+    },
+    {
+      "id": "ai_te_short",
+      "track": "ai",
+      "language": "te-IN",
+      "review_status": "unreviewed",
+      "mean_score": 56.0,
+      "score_std": 0.0,
+      "min_score": 56.0,
+      "max_score": 56.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 19.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 11.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 6.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.19051239997907032,
+        "p95_nearest_rank": 0.5299000000036358
+      },
+      "human_reference": null
+    },
+    {
+      "id": "software_hi_short",
+      "track": "software",
+      "language": "hi-IN",
+      "review_status": "unreviewed",
+      "mean_score": 54.0,
+      "score_std": 0.0,
+      "min_score": 54.0,
+      "max_score": 54.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 19.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 2.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 13.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.16046040000219364,
+        "p95_nearest_rank": 0.384596000003512
+      },
+      "human_reference": null
+    }
+  ],
+  "limitations": [
+    "No accuracy or bias conclusion without adequately adjudicated human references.",
+    "Deterministic heuristic repeats do not establish stochastic LLM scorer reliability.",
+    "Measured durations are local scorer-call wall times, not end-to-end STT/LLM/TTS latency."
+  ],
+  "gate": {
+    "passed": true,
+    "failures": []
+  }
+}

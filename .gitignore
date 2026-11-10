@@ -1,0 +1,41 @@
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python environments, caches and packages
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Local recordings, outputs and personal data
+*.wav
+*.mp3
+*.m4a
+*.ogg
+*.flac
+recordings/
+uploads/
+private_data/
+artifacts/
+*.sqlite
+*.sqlite3
+*.db
+
+# Development tools and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.data/

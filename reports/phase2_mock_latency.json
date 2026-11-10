@@ -1,0 +1,31 @@
+{
+  "simulation_only": true,
+  "note": "These are mocked network waits, not Gnani/LiveKit provider timings.",
+  "concurrent_calls": 20,
+  "by_stage": {
+    "stt": {
+      "p50_ms": 39.64,
+      "p95_ms": 40.49,
+      "max_ms": 41.37,
+      "samples": 20
+    },
+    "scoring": {
+      "p50_ms": 2.21,
+      "p95_ms": 3.96,
+      "max_ms": 6.43,
+      "samples": 20
+    },
+    "tts": {
+      "p50_ms": 25.31,
+      "p95_ms": 25.32,
+      "max_ms": 25.32,
+      "samples": 20
+    },
+    "total": {
+      "p50_ms": 67.18,
+      "p95_ms": 67.27,
+      "max_ms": 67.28,
+      "samples": 20
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "dataset_id": "synthetic-practice-review-queue-v1",
+  "purpose": "Synthetic cases for functional smoke tests and later human review. No human ground-truth labels supplied.",
+  "cases": [
+    {
+      "id": "agentic_en_strong", "track": "agentic", "question_index": 0, "language": "en-IN",
+      "answer": "First I built an agent workflow with a restricted file editing tool. Because generated patches can be wrong, I required human approval before editing protected files, then tested changes using 12 regression tests and recorded an audit log.",
+      "review_status": "unreviewed", "reference": null
+    },
+    {
+      "id": "agentic_en_empty", "track": "agentic", "question_index": 0, "language": "en-IN",
+      "answer": "I like technology and want to become a strong developer.",
+      "review_status": "unreviewed", "reference": null
+    },
+    {
+      "id": "agentic_en_keyword_stuffing", "track": "agentic", "question_index": 0, "language": "en-IN",
+      "answer": "Agent tools approval permission guardrail agent tools approval permission guardrail. I used agent tools and approval so everything is excellent, with no demonstrated implementation or verified results.",
+      "review_status": "unreviewed", "reference": null
+    },
+    {
+      "id": "ai_en_measurement", "track": "ai", "question_index": 1, "language": "en-IN",
+      "answer": "I split the dataset into train and validation sets, evaluated precision and recall on a held-out test set, then improved the classifier through augmentation. I compared results across 3 random seeds before choosing the final model.",
+      "review_status": "unreviewed", "reference": null
+    },
+    {
+      "id": "ai_en_false_claim", "track": "ai", "question_index": 1, "language": "en-IN",
+      "answer": "My evaluation metric was accuracy and the validation method was testing. Therefore I improved it to 100 percent, which means the model can never make another mistake.",
+      "review_status": "unreviewed", "reference": null
+    },
+    {
+      "id": "software_en_debugging", "track": "software", "question_index": 0, "language": "en-IN",
+      "answer": "I reproduced a bug, read the stack trace, and found a timeout. After changing the request path, I ran unit tests to verify the fix and checked the logs for regressions.",
+      "review_status": "unreviewed", "reference": null
+    },
+    {
+      "id": "agentic_te_terms", "track": "agentic", "question_index": 0, "language": "te-IN",
+      "answer": "నేను ఏజెంట్ నిర్మించాను. అది టూల్ ఉపయోగిస్తుంది. ఫైల్స్ మార్చే ముందు అనుమతి తీసుకుంటుంది, తర్వాత పరీక్ష చేసి లాగ్స్ చూస్తాను.",
+      "review_status": "unreviewed", "reference": null
+    },
+    {
+      "id": "ai_te_short", "track": "ai", "question_index": 0, "language": "te-IN",
+      "answer": "నేను మోడల్ తయారు చేశాను. డేటా ఉపయోగించాను.",
+      "review_status": "unreviewed", "reference": null
+    },
+    {
+      "id": "software_hi_short", "track": "software", "question_index": 0, "language": "hi-IN",
+      "answer": "मैंने बग खोजा और परीक्षण किया।",
+      "review_status": "unreviewed", "reference": null
+    }
+  ]
+}

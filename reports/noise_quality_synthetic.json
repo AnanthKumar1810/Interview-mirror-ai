@@ -1,0 +1,155 @@
+{
+  "source": "synthetic_offline_espeak_not_real_recordings",
+  "n_clips": 4,
+  "asr_provider_calls": 0,
+  "aggregate": {
+    "mean_snr_delta_db": 3.163,
+    "mean_si_sdr_delta_db": 2.477,
+    "mean_noise_only_attenuation_db": 3.504
+  },
+  "cases": [
+    {
+      "id": "espeak_8k_0dB",
+      "language": "en-US",
+      "provenance": "synthetic espeak speech + generated stationary/noisy mixture",
+      "input_sample_rate_hz": 8000,
+      "samples": 62524,
+      "modes": {
+        "off": {
+          "snr_db": 0.143,
+          "si_sdr_db": 0.207,
+          "rmse": 0.062061,
+          "processing_ms": 10.136,
+          "real_time_factor": 0.0013,
+          "output_sample_rate_hz": 16000,
+          "output_duration_seconds": 7.816,
+          "noise_only_rms": 0.062901
+        },
+        "spectral": {
+          "snr_db": 3.666,
+          "si_sdr_db": 2.515,
+          "rmse": 0.04137,
+          "processing_ms": 140.317,
+          "real_time_factor": 0.01795,
+          "output_sample_rate_hz": 16000,
+          "output_duration_seconds": 7.816,
+          "noise_only_rms": 0.040102
+        }
+      },
+      "spectral_minus_raw": {
+        "snr_delta_db": 3.523,
+        "si_sdr_delta_db": 2.308,
+        "noise_only_attenuation_db": 3.91
+      }
+    },
+    {
+      "id": "espeak_8k_10dB",
+      "language": "en-US",
+      "provenance": "synthetic espeak speech + generated stationary/noisy mixture",
+      "input_sample_rate_hz": 8000,
+      "samples": 62524,
+      "modes": {
+        "off": {
+          "snr_db": 10.147,
+          "si_sdr_db": 10.168,
+          "rmse": 0.019616,
+          "processing_ms": 13.936,
+          "real_time_factor": 0.00178,
+          "output_sample_rate_hz": 16000,
+          "output_duration_seconds": 7.816,
+          "noise_only_rms": 0.021538
+        },
+        "spectral": {
+          "snr_db": 12.758,
+          "si_sdr_db": 12.549,
+          "rmse": 0.014524,
+          "processing_ms": 76.307,
+          "real_time_factor": 0.00976,
+          "output_sample_rate_hz": 16000,
+          "output_duration_seconds": 7.816,
+          "noise_only_rms": 0.015074
+        }
+      },
+      "spectral_minus_raw": {
+        "snr_delta_db": 2.611,
+        "si_sdr_delta_db": 2.381,
+        "noise_only_attenuation_db": 3.1
+      }
+    },
+    {
+      "id": "espeak_16k_0dB",
+      "language": "en-US",
+      "provenance": "synthetic espeak speech + generated stationary/noisy mixture",
+      "input_sample_rate_hz": 16000,
+      "samples": 125047,
+      "modes": {
+        "off": {
+          "snr_db": 0.0,
+          "si_sdr_db": 0.046,
+          "rmse": 0.061514,
+          "processing_ms": 5.909,
+          "real_time_factor": 0.00076,
+          "output_sample_rate_hz": 16000,
+          "output_duration_seconds": 7.815,
+          "noise_only_rms": 0.062301
+        },
+        "spectral": {
+          "snr_db": 3.638,
+          "si_sdr_db": 2.623,
+          "rmse": 0.040468,
+          "processing_ms": 84.41,
+          "real_time_factor": 0.0108,
+          "output_sample_rate_hz": 16000,
+          "output_duration_seconds": 7.815,
+          "noise_only_rms": 0.039687
+        }
+      },
+      "spectral_minus_raw": {
+        "snr_delta_db": 3.638,
+        "si_sdr_delta_db": 2.577,
+        "noise_only_attenuation_db": 3.917
+      }
+    },
+    {
+      "id": "espeak_16k_10dB",
+      "language": "en-US",
+      "provenance": "synthetic espeak speech + generated stationary/noisy mixture",
+      "input_sample_rate_hz": 16000,
+      "samples": 125047,
+      "modes": {
+        "off": {
+          "snr_db": 10.002,
+          "si_sdr_db": 10.017,
+          "rmse": 0.019448,
+          "processing_ms": 7.381,
+          "real_time_factor": 0.00094,
+          "output_sample_rate_hz": 16000,
+          "output_duration_seconds": 7.815,
+          "noise_only_rms": 0.021427
+        },
+        "spectral": {
+          "snr_db": 12.882,
+          "si_sdr_db": 12.657,
+          "rmse": 0.01396,
+          "processing_ms": 93.559,
+          "real_time_factor": 0.01197,
+          "output_sample_rate_hz": 16000,
+          "output_duration_seconds": 7.815,
+          "noise_only_rms": 0.015015
+        }
+      },
+      "spectral_minus_raw": {
+        "snr_delta_db": 2.88,
+        "si_sdr_delta_db": 2.64,
+        "noise_only_attenuation_db": 3.089
+      }
+    }
+  ],
+  "limitations": [
+    "SNR/SI-SDR are signal-fidelity measures, not speech-recognition accuracy or human intelligibility.",
+    "Synthetic espeak audio is not a natural Telugu-English telephony sample.",
+    "Spectral gating may suppress noise while harming phonemes; run real paired WER evaluation separately.",
+    "Real-time-factor excludes browser capture and remote Gnani provider latency.",
+    "No human listening test, PESQ/STOI, or deepfilter3 benchmark was run unless explicitly reported."
+  ]
+}

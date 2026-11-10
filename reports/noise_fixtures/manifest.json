@@ -1,0 +1,38 @@
+{
+  "source": "synthetic_offline_espeak_not_real_recordings",
+  "purpose": "audio signal sanity check, not human intelligibility or Prisma WER",
+  "cases": [
+    {
+      "id": "espeak_8k_0dB",
+      "clean": "espeak_8k_0dB_clean.wav",
+      "noisy": "espeak_8k_0dB_noisy.wav",
+      "language": "en-US",
+      "provenance": "synthetic espeak speech + generated stationary/noisy mixture",
+      "nominal_snr_db": 0
+    },
+    {
+      "id": "espeak_8k_10dB",
+      "clean": "espeak_8k_10dB_clean.wav",
+      "noisy": "espeak_8k_10dB_noisy.wav",
+      "language": "en-US",
+      "provenance": "synthetic espeak speech + generated stationary/noisy mixture",
+      "nominal_snr_db": 10
+    },
+    {
+      "id": "espeak_16k_0dB",
+      "clean": "espeak_16k_0dB_clean.wav",
+      "noisy": "espeak_16k_0dB_noisy.wav",
+      "language": "en-US",
+      "provenance": "synthetic espeak speech + generated stationary/noisy mixture",
+      "nominal_snr_db": 0
+    },
+    {
+      "id": "espeak_16k_10dB",
+      "clean": "espeak_16k_10dB_clean.wav",
+      "noisy": "espeak_16k_10dB_noisy.wav",
+      "language": "en-US",
+      "provenance": "synthetic espeak speech + generated stationary/noisy mixture",
+      "nominal_snr_db": 10
+    }
+  ]
+}

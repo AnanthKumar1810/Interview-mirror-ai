@@ -1,0 +1,46 @@
+name: Python tests
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+      - name: Run offline tests (no Gnani credentials)
+        run: python -m pytest -q
+      - name: Gate numerical-scoring regressions against checked-in baseline
+        run: |
+          python -m eval_harness.run \
+            --dataset eval_harness/datasets/practice_review_queue.json \
+            --repeats 5 \
+            --compare reports/phase1_baseline.json \
+            --max-absolute-score-drift 0 \
+            --max-within-case-std 0 \
+            --output reports/phase1_ci.json
+
+      - name: Gate improved rubric dimensional drift
+        run: |
+          python -m eval_harness.run \
+            --dataset eval_harness/datasets/practice_review_queue.json \
+            --scorer robust \
+            --repeats 5 \
+            --compare reports/risk_aware_baseline.json \
+            --max-absolute-score-drift 0 \
+            --max-within-case-std 0 \
+            --output reports/risk_aware_ci.json
+      - name: Gate synthetic adversarial failures (not human MAE)
+        run: python -m eval_harness.compare_robust --output reports/robust_ci.json

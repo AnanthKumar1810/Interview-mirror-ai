@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-09",
+  "source": "local upgraded InterviewMirror source archive",
+  "automated_tests": {"passed": 83, "status": "verified_locally"},
+  "scorer": {"legacy_regression_gate": "pass", "risk_aware_regression_gate": "pass", "synthetic_review_cases": 9, "human_adjudicated_cases": 0},
+  "authentication": {"password_hashing": "argon2id", "token": "JWT HS256 issuer/audience/exp/jti with persisted revocation", "cross_user_access_tests": "pass", "production_without_auth_boot_rejected": true},
+  "persistence": {"engine": "SQLite WAL", "schema_version": 1, "restart_recovery": "pass", "optimistic_write_conflict": "pass", "expiry_cleanup": "pass", "account_deletion_cascade": "pass"},
+  "noise": {"method": "spectral noise reduction (not neural)", "samples": 4, "source": "synthetic offline espeak speech with added noise", "mean_snr_delta_db": 3.163, "mean_si_sdr_delta_db": 2.477, "mean_noise_only_attenuation_db": 3.504, "real_gnani_wer_tested": false, "deepfilternet_tested": false},
+  "limitations": ["Not audited for public production deployment", "No independent human calibration of numeric interview scores", "No real Telugu-English noise benchmark", "No live Prisma/Timbre provider verification in this build", "Docker build and browser microphone flow not independently tested in this run"]
+}
