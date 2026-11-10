@@ -13,8 +13,8 @@
     <aside class="sidebar">
       <div class="brand"><div class="brand-logo">IM<span>✧</span></div><div><b>interviewmirror</b><small>AI speaking studio</small></div></div>
       <div class="side-section-label">WORKSPACE</div>
-      <div class="nav-item active"><span class="nav-icon">◉</span> Interview studio <span class="nav-marker"></span></div>
-      <div class="nav-item"><span class="nav-icon">◷</span> Progress review <span class="nav-sublabel">in session</span></div>
+      <button type="button" class="nav-item active" id="studio-nav" aria-current="page"><span class="nav-icon">◉</span> Interview studio <span class="nav-marker"></span></button>
+      <button type="button" class="nav-item" id="progress-nav"><span class="nav-icon">◷</span> Progress review</button>
       <div class="sidebar-bottom">
         <div class="backend-status"><span class="status-dot" id="side-dot"></span><div><strong id="side-status">Checking provider</strong><small id="side-mode">Connecting to backend…</small></div></div>
         <div class="sidebar-note">Built for deliberate practice.<br />SQLite-backed practice; production deployment requires additional review.</div>
@@ -40,6 +40,7 @@
         <div id="auth-signed-in" hidden><button type="button" id="auth-restore-btn" class="btn btn-secondary">Resume most recent interview</button> <button type="button" id="auth-logout-btn" class="btn btn-secondary">Sign out</button></div>
         <small>Auth tokens remain in memory and expire after one hour. HTTPS is required for public use.</small>
       </section>
+      <section id="studio-view" aria-label="Interview studio">
       <section class="config-card">
         <div class="card-heading"><div><span class="overline">01 / SET UP YOUR SESSION</span><h2>Make it your interview</h2></div><span class="time-chip">~ 5 MIN PRACTICE</span></div>
         <div class="form-grid"><label>Interview focus<select id="track"><option value="agentic">Agentic AI &amp; LLMs</option><option value="ai">Machine Learning</option><option value="software">Software Engineering</option></select></label><label>Interview language<select id="language"><option value="en-IN">English (India)</option><option value="te-IN">తెలుగు · Telugu</option><option value="hi-IN">हिन्दी · Hindi</option></select></label><button id="start-btn" class="btn btn-primary">Start interview <span>↗</span></button></div>
@@ -48,6 +49,7 @@
         <div class="interview-card">
           <div class="interview-header"><div><span class="overline">02 / LIVE PRACTICE</span><h2>Your interview space</h2></div><div class="session-pill" id="session-pill"><span></span> Not started</div></div>
           <div class="question-area">
+            <ol class="stepper" id="interview-stepper" aria-label="Interview questions"><li>1. Prepare</li><li>2. Practice</li><li>3. Review</li></ol>
             <div class="question-meta"><span id="question-count">QUESTION 00 / 03</span><span id="question-track">AGENTIC AI</span></div>
             <h3 id="question-text">The best interviews start with a good question.</h3>
             <p id="question-hint">Set your preferences above, then start a three-question practice session.</p>
@@ -75,9 +77,17 @@
           <div class="provider-card"><span class="provider-icon">◎</span><div><h3>Powered by your stack</h3><p><strong>Gnani Prisma</strong> for transcription<br /><strong>Gnani Timbre</strong> for spoken questions<br /><strong>Optional Ollama</strong> for deeper feedback</p><span id="coach-method">Coach: explainable text rubric</span> <a href="/api/diagnostics" target="_blank" rel="noopener noreferrer" style="display:block;margin-top:8px;color:inherit;text-decoration:underline;">View connection diagnostics</a></div></div>
         </div>
       </section>
+      </section>
+      <section id="progress-view" class="progress-view" aria-labelledby="progress-heading" hidden>
+        <div class="card-heading"><div><span class="overline">YOUR PRACTICE HISTORY</span><h2 id="progress-heading">Progress review</h2></div><button type="button" class="btn btn-secondary" id="progress-refresh">Refresh</button></div>
+        <p id="progress-status" role="status" aria-live="polite">Sign in to review saved interviews.</p>
+        <div id="progress-list" class="progress-list"></div>
+        <section id="progress-detail" class="progress-detail" aria-label="Selected interview report" hidden></section>
+      </section>
       <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
       <footer class="footer"><span>InterviewMirror AI · private practice workspace</span><span>Transcript-based scores are practice aids, not hiring assessments.</span></footer>
     </main>
   </div>
 </body>
 </html>
+

@@ -43,7 +43,75 @@ function busy(on) {
   $('preview-btn').disabled = on || !state.recordingWav || state.recording;
   $('save-record-btn').disabled = on || !state.recordingWav || state.recording;
 }
+function updateStepper(stage) {
+  const steps = $('interview-stepper').children;
+  for (let i = 0; i < steps.length; i++) {
+    steps[i].classList.toggle('current', i === stage);
+    steps[i].classList.toggle('done', i < stage);
+    if (i === stage) steps[i].setAttribute('aria-current', 'step');
+    else steps[i].removeAttribute('aria-current');
+  }
+}
+function showView(name) {
+  const progress = name === 'progress';
+  $('studio-view').hidden = progress; $('progress-view').hidden = !progress;
+  $('studio-nav').classList.toggle('active', !progress);
+  $('progress-nav').classList.toggle('active', progress);
+  $('studio-nav').toggleAttribute('aria-current', !progress);
+  $('progress-nav').toggleAttribute('aria-current', progress);
+  document.querySelector('.breadcrumb').textContent = progress ? 'Workspace / Progress review' : 'Workspace / Interview studio';
+}
+function appendText(parent, tag, value, className) {
+  const element = document.createElement(tag); element.textContent = value;
+  if (className) element.className = className;
+  parent.appendChild(element); return element;
+}
+async function showProgressReport(sessionId) {
+  $('progress-detail').hidden = false;
+  $('progress-detail').replaceChildren();
+  appendText($('progress-detail'), 'p', 'Loading interview report…');
+  try {
+    const report = await (await api(`/api/report/${encodeURIComponent(sessionId)}`)).json();
+    const detail = $('progress-detail'); detail.replaceChildren();
+    appendText(detail, 'h3', `${report.track} · ${report.language}`);
+    appendText(detail, 'p', `${report.answered} of ${report.total_questions} answers · Average practice score: ${report.average_score ?? '—'}/100`);
+    appendText(detail, 'p', report.note, 'progress-note');
+    for (const [index, item] of report.results.entries()) {
+      const section = document.createElement('section'); section.className = 'progress-answer';
+      appendText(section, 'h4', `Question ${index + 1}: ${item.question}`);
+      appendText(section, 'p', item.transcript, 'progress-transcript');
+      appendText(section, 'p', `Practice score: ${item.feedback.score}/100`);
+      const list = document.createElement('ul');
+      for (const tip of item.feedback.improvements || []) appendText(list, 'li', tip);
+      section.appendChild(list); detail.appendChild(section);
+    }
+  } catch (error) {
+    $('progress-detail').replaceChildren();
+    appendText($('progress-detail'), 'p', `Could not load report: ${error.message}`);
+  }
+}
+async function loadProgress() {
+  const list = $('progress-list'); list.replaceChildren(); $('progress-detail').hidden = true;
+  if (!state.authRequired || !state.accessToken) {
+    $('progress-status').textContent = state.authRequired ? 'Sign in to see your saved interviews.' : 'Account history is available when authentication is enabled by the server operator.';
+    return;
+  }
+  $('progress-status').textContent = 'Loading your saved interviews…';
+  try {
+    const data = await (await api('/api/my/sessions')).json();
+    $('progress-status').textContent = data.sessions.length ? `${data.sessions.length} saved interview${data.sessions.length === 1 ? '' : 's'}. Select one to review its transcript and feedback.` : 'No saved interviews yet. Start a practice session in the studio.';
+    for (const session of data.sessions) {
+      const card = document.createElement('button'); card.type = 'button'; card.className = 'progress-card';
+      appendText(card, 'strong', ({ai:'Machine Learning', agentic:'Agentic AI', software:'Software Engineering'}[session.track] || session.track));
+      appendText(card, 'span', `${session.language} · ${session.answered}/3 answers · ${session.completed ? 'Completed' : 'In progress'}`);
+      appendText(card, 'span', `Average practice score: ${session.average_score ?? '—'}/100`);
+      card.addEventListener('click', () => showProgressReport(session.session_id));
+      list.appendChild(card);
+    }
+  } catch (error) { $('progress-status').textContent = `Could not load history: ${error.message}`; }
+}
 function setQuestion(question, number, kind = "core", reason = "") {
+  updateStepper(1);
   clearRecording();
   state.question = question; state.nextQuestion = null;
   $('question-text').textContent = question;
@@ -71,6 +139,7 @@ async function startInterview() {
     const res = await api('/api/session', jsonOptions({ track: state.track, language: state.language }));
     const data = await res.json();
     state.session = data.session_id; state.answered = 0; state.completed = false;
+    showView('studio');
     $('stat-answered').innerHTML = '0 <small>/ 3</small>'; $('stat-score').textContent = '—';
     $('feedback-panel').hidden = true; $('coach-headline').textContent = 'Your coach is ready.';
     $('coach-subtitle').textContent = 'Give your answer, then see evidence-based feedback.';
@@ -187,7 +256,7 @@ async function toggleRecording() {
           toast('Gnani transcription skipped. Check audio consent if you wish to send the recording.');
         } else if (state.live) {
           $('orb-caption').textContent = 'Audio checked. Requesting Gnani Prisma transcription…';
-          const form = new FormData(); form.append('audio', wav, 'candidate.wav'); form.append('language', state.language); form.append('enhancement', $('noise-policy').value); form.append('consent', 'true');
+          const form = new FormData(); form.append('audio', wav, 'candidate.wav'); form.append('language', state.language); form.append('track', state.track); form.append('enhancement', $('noise-policy').value); form.append('consent', 'true');
           const transcriptResponse = await api('/api/transcribe', { method: 'POST', body: form });
           const data = await transcriptResponse.json();
           $('answer-input').value = data.transcript;
@@ -294,6 +363,7 @@ async function submitAnswer() {
     state.answered = data.answered; state.completed = data.completed; state.nextQuestion = data.next_question;
     state.nextKind = data.next_question_kind || 'core'; state.nextReason = data.next_question_reason || '';
     state.question = null;
+    updateStepper(2);
     showFeedback(data.feedback);
     $('stat-answered').innerHTML = `${data.answered} <small>/ 3</small>`;
     $('stat-score').textContent = `${data.average_score}/100`;
@@ -336,6 +406,7 @@ async function signIn(action) {
     $('auth-fields').hidden = true; $('auth-signed-in').hidden = false;
     $('auth-status-text').textContent = `Signed in as ${email}. Sessions are saved on the server.`;
     busy(false); toast('Signed in. You can start or resume an interview.', true);
+    if (!$('progress-view').hidden) await loadProgress();
   } catch (error) { toast(error.message); }
 }
 async function restoreSession() {
@@ -351,6 +422,7 @@ async function restoreSession() {
     state.nextQuestion = null;
     if (info.completed) {
       state.question = null;
+      updateStepper(2);
       $('question-text').textContent = 'Interview completed';
       $('report-btn').hidden = false; $('delete-session-btn').hidden = false;
       await renderReportSummary();
@@ -364,6 +436,10 @@ async function restoreSession() {
   } catch (error) { toast('Could not restore session: ' + error.message); }
 }
 async function init() {
+  updateStepper(0);
+  $('studio-nav').addEventListener('click', () => showView('studio'));
+  $('progress-nav').addEventListener('click', () => { showView('progress'); loadProgress(); });
+  $('progress-refresh').addEventListener('click', loadProgress);
   $('auth-login-btn').addEventListener('click', () => signIn('login'));
   $('auth-register-btn').addEventListener('click', () => signIn('register'));
   $('auth-restore-btn').addEventListener('click', restoreSession);
@@ -373,6 +449,7 @@ async function init() {
     state.accessToken = null; state.session = null; state.question = null;
     $('auth-fields').hidden = false; $('auth-signed-in').hidden = true;
     $('auth-status-text').textContent = 'Signed out. Sign in to access your saved sessions.';
+    if (!$('progress-view').hidden) loadProgress();
     busy(false); toast('Signed out.', true);
   });
   $('start-btn').addEventListener('click', startInterview);
@@ -408,3 +485,4 @@ async function init() {
   } catch (err) { $('mode-heading').textContent = 'Backend is offline'; $('mode-description').textContent = err.message; }
 }
 init();
+

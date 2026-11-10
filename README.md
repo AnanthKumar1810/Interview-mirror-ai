@@ -1,6 +1,8 @@
 # InterviewMirror AI — Gnani Voice Evaluation & Noise Upgrade
 
-**Build updated 9 Nov 2026 — authentication, SQLite persistence and independent noise testing.** An existing FastAPI + Prisma/Timbre technical interview practice system with implemented risk-aware scoring, opt-in speech enhancement, score regression gates and explicit voice-data consent.
+**Build updated 10 Nov 2026 — account progress review, Prisma vocabulary hints and scoring regression controls.** An existing FastAPI + Prisma/Timbre technical interview practice system with implemented risk-aware scoring, opt-in speech enhancement, score regression gates and explicit voice-data consent.
+
+See [three-report reconciliation](docs/REPORT_RECONCILIATION.md) for findings verified against this source version. The Progress review view reads account-owned sessions from SQLite, including transcripts and feedback. The scorer now flags dense, disconnected keyword lists, but remains an uncalibrated practice aid. Prisma v2.5 word boosting is limited to single letter-only technical terms from the selected interview focus and still requires transcript review.
 
 **Measured locally:** 9-case synthetic dataset with 0 human-reviewed labels; among 2 developer-defined adversarial probes, scores >=70 changed from 1/2 (baseline) to 0/2 (new scorer). This does not establish real-world scoring validity. **Live Gnani calls / noisy Telugu WER have not been verified.**
 
@@ -95,3 +97,4 @@ Implementation rationale: **[AUDIO_PREFLIGHT_AND_DESIGN.md](AUDIO_PREFLIGHT_AND_
 ## Publishing source code
 
 Read **[PUBLISH_TO_GITHUB.md](PUBLISH_TO_GITHUB.md)** for safe GitHub creation, staging checks, and push commands. See **[PROJECT_STATUS.md](PROJECT_STATUS.md)** for a truthful inventory of what is and is not verified. The repository excludes `.env`, audio recordings, local databases, and caches.
+

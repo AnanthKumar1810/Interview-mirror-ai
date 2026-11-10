@@ -352,10 +352,12 @@ async def audio_check(audio: UploadFile = File(...), user_id: str | None = Depen
 
 @app.post("/api/transcribe")
 async def transcribe(audio: UploadFile = File(...), language: str = Form("en-IN"),
-                     enhancement: str = Form("off"), consent: bool = Form(False),
+                     enhancement: str = Form("off"), consent: bool = Form(False), track: str = Form(""),
                      user_id: str | None = Depends(current_owner)):
     if language not in SUPPORTED_LANGUAGES:
         raise HTTPException(422, "Unsupported language.")
+    if track and track not in QUESTION_BANK:
+        raise HTTPException(422, "Unsupported interview focus.")
     raw, info = await _verified_wav_upload(audio)
     if info["possibly_silent"]:
         raise HTTPException(422, "Recording appears silent. Check microphone input and retry before using Gnani credits.")
@@ -367,7 +369,8 @@ async def transcribe(audio: UploadFile = File(...), language: str = Form("en-IN"
         raise HTTPException(422, str(exc)) from exc
     _reserve_provider_call()
     try:
-        response = await run_in_threadpool(provider().transcribe, processed, language)
+        terms = [term for question in QUESTION_BANK.get(track, []) for term in question.get("keywords", [])]
+        response = await run_in_threadpool(provider().transcribe, processed, language, terms)
         # Do not expose recorded audio or secrets. Enhancement accuracy is unverified.
         return {**response, "audio_processing": noise_info}
     except GnaniError as exc:
@@ -465,3 +468,4 @@ def delete_session(session_id: str, user_id: str | None = Depends(current_owner)
     get_session(session_id, user_id)
     STORE.delete_session(session_id, user_id)
     return {"deleted": True, "session_id": session_id}
+

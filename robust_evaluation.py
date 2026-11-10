@@ -45,6 +45,24 @@ def _repetition(text: str) -> tuple[bool, str]:
     return False, ""
 
 
+def _keyword_list(text: str) -> bool:
+    """Flag dense, disconnected English keyword lists, including unique-word lists.
+
+    This is a narrow warning, not a grammar or multilingual quality judgement.
+    Requiring several independent signals avoids penalising concise code-mixed
+    answers solely because their English vocabulary is technical.
+    """
+    tokens = re.findall(r"[a-z]+", text.casefold())
+    if len(tokens) < 18 or len(tokens) < len(re.findall(r"[^\W_]+", text, re.UNICODE)) * .8:
+        return False
+    glue = {"a", "an", "the", "of", "to", "in", "on", "with", "for", "from", "by", "and", "but",
+            "that", "which", "when", "before", "after", "because", "if", "was", "were", "is", "are"}
+    glue_count = sum(token in glue for token in tokens)
+    # A long technical inventory with one or two isolated pronouns is not an explanation.
+    clauses = [part for part in re.split(r"[.!?;।\n]+", text) if part.strip()]
+    return glue_count / len(tokens) < .12 and len(clauses) <= 2
+
+
 def _valid_semantic_signal(signal: object, text: str) -> dict | None:
     if not isinstance(signal, dict):
         return None
@@ -78,9 +96,12 @@ def evaluate_robust(
         # Verbatim candidate text is evidence of repetition, not an invented quote.
         flags.append({"code": "keyword_stuffing", "quote": transcript[:120].strip(),
                       "explanation": explanation})
+    elif _keyword_list(transcript):
+        flags.append({"code": "disconnected_keyword_list", "quote": transcript[:120].strip(),
+                      "explanation": "A list of technical terms alone does not show how the concepts relate or what was done."})
 
     # Constrain the dimensions rather than deducting a hidden number from total.
-    if any(f["code"] == "keyword_stuffing" for f in flags):
+    if any(f["code"] in {"keyword_stuffing", "disconnected_keyword_list"} for f in flags):
         dims["technical_coverage"] = min(dims["technical_coverage"], 10)
         dims["evidence"] = min(dims["evidence"], 3)
         dims["clarity"] = min(dims["clarity"], 8)
@@ -133,3 +154,4 @@ def evaluate_for_app(transcript: str, question: dict, language: str,
         from semantic_judge import judge_with_ollama
         judge = judge_with_ollama
     return evaluate_robust(transcript, question, language, track, index, semantic_judge=judge)
+

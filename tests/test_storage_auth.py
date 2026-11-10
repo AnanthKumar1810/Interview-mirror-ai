@@ -110,3 +110,19 @@ def test_optimistic_concurrency_expiry_and_old_schema_safety(tmp_path):
         con.execute('UPDATE interviews SET expires_at=? WHERE id=?', (int(time.time())-3, 'session-1'))
     assert db.get_session('session-1', None) is None
     assert db.cleanup()['expired_sessions'] == 1
+
+
+def test_progress_history_is_owned_and_summarizes_saved_answers(authenticated_app):
+    client, _ = authenticated_app
+    first = _register(client, 'history-first@example.com')
+    second = _register(client, 'history-second@example.com')
+    sid = client.post('/api/session', headers=_headers(first), json={'track': 'ai'}).json()['session_id']
+    assert client.post('/api/answer', headers=_headers(first), json={
+        'session_id': sid, 'text': 'I built a model with training data and tested it on a held-out validation set.'
+    }).status_code == 200
+    own = client.get('/api/my/sessions', headers=_headers(first)).json()['sessions']
+    assert own[0]['session_id'] == sid and own[0]['answered'] == 1
+    assert isinstance(own[0]['average_score'], int) and not own[0]['completed']
+    assert client.get('/api/my/sessions', headers=_headers(second)).json()['sessions'] == []
+    assert client.get(f'/api/report/{sid}', headers=_headers(second)).status_code == 404
+
