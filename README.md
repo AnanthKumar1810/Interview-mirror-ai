@@ -4,13 +4,15 @@
 
 See [three-report reconciliation](docs/REPORT_RECONCILIATION.md) for findings verified against this source version. The Progress review view reads account-owned sessions from SQLite, including transcripts and feedback. The scorer now flags dense, disconnected keyword lists, but remains an uncalibrated practice aid. Prisma v2.5 word boosting is limited to single letter-only technical terms from the selected interview focus and still requires transcript review.
 
-**Measured locally:** 9-case synthetic dataset with 0 human-reviewed labels; among 2 developer-defined adversarial probes, scores >=70 changed from 1/2 (baseline) to 0/2 (new scorer). This does not establish real-world scoring validity. **Live Gnani calls / noisy Telugu WER have not been verified.**
+**Measured locally:** 9-case synthetic dataset with 0 human-reviewed labels; among 2 developer-defined adversarial probes, scores >=70 changed from 1/2 (baseline) to 0/2 (new scorer). This does not establish real-world scoring validity. Live Gnani STT/TTS and a small human-recorded Hindi/Telugu speech check are now documented in [live results](docs/LIVE_GNANI_RESULTS_2026-11-13.md). No noisy Telugu interview WER or live Evon evaluation has been measured.
 
 **Implementation guides:** [Architecture](docs/ARCHITECTURE.md) · [Gnani engineering scope](docs/GNANI_VOICE_ENGINEERING_SCOPE.md) · [Deployment and security](docs/DEPLOYMENT_AND_SECURITY.md) · [Changelog](docs/IMPLEMENTATION_CHANGELOG.md).
 
 **Getting started:** use Python 3.13, run `python -m pip install -r requirements-dev.txt`, `python -m pytest -q`, `python -m eval_harness.compare_robust`, then `python -m uvicorn main:app --reload --port 8001`. Set `GNANI_API_KEY` **only in your local `.env`** to test real STT/TTS. The default enhancement is **off**, with experimental spectral and optional DeepFilterNet3 choices. The UI asks for consent before forwarding recordings to Gnani.
 
 **Production disclaimer:** user accounts, Argon2 password hashes, bearer authentication and SQLite persistence are now implemented and tested. Expert-calibrated scores, live real-provider benchmarking and public deployment controls are still outstanding; see the security runbook.
+
+With the available Gnani STT/TTS key, follow the [STT/TTS-only delivery plan](docs/GNANI_STT_TTS_ONLY_PLAN.md). The live app's numeric feedback is an uncalibrated text-based practice rubric. The Gnani Evon semantic A/B/C experiment is separate and awaits actual Evon access.
 
 ---
 
@@ -97,4 +99,5 @@ Implementation rationale: **[AUDIO_PREFLIGHT_AND_DESIGN.md](AUDIO_PREFLIGHT_AND_
 ## Publishing source code
 
 Read **[PUBLISH_TO_GITHUB.md](PUBLISH_TO_GITHUB.md)** for safe GitHub creation, staging checks, and push commands. See **[PROJECT_STATUS.md](PROJECT_STATUS.md)** for a truthful inventory of what is and is not verified. The repository excludes `.env`, audio recordings, local databases, and caches.
+
 
