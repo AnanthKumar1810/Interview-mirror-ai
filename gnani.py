@@ -67,7 +67,11 @@ class GnaniClient:
                    *, model_version: str = "prisma-v2.5") -> dict:
         if model_version not in {"prisma-v2.5", "prisma-v3.0"}:
             raise GnaniError("Unsupported Prisma model.")
-        if language not in VOICE and not (model_version == "prisma-v3.0" and language == "indic-auto"):
+        v3_hints = language.split(",") if model_version == "prisma-v3.0" else []
+        valid_v3_hints = (1 <= len(v3_hints) <= 4 and all(hint in VOICE for hint in v3_hints)
+                          and len(set(v3_hints)) == len(v3_hints))
+        if language not in VOICE and not (model_version == "prisma-v3.0"
+                                          and (language == "indic-auto" or valid_v3_hints)):
             raise GnaniError("Unsupported transcription language.")
         # Official docs: omit model for default Prisma v2.5. The provider only
         # needs audio_file and language_code; format=transcribe cleans punctuation.
