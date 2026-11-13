@@ -458,7 +458,8 @@ async def submit_answer_compat(
     if not text:
         if audio is None:
             raise HTTPException(422, "Provide a transcript or a 16 kHz mono WAV recording.")
-        stt_metadata = await transcribe(audio, session.language, enhancement, consent, user_id)
+        stt_metadata = await transcribe(audio, session.language, enhancement, consent, user_id,
+                                        "prisma-v2.5")
         text = stt_metadata["transcript"]
     # The UI's mock transcript field never masquerades as an STT response.
     result = answer(AnswerRequest(session_id=session_id, text=text), user_id)
