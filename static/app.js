@@ -261,7 +261,8 @@ async function toggleRecording() {
           const data = await transcriptResponse.json();
           $('answer-input').value = data.transcript;
           $('answer-counter').textContent = `${data.transcript.length} characters`;
-          $('orb-caption').textContent = `Gnani transcript ready (${data.audio_processing?.enhancement || 'off'} processing). Review before submitting.`;
+          const detected = data.detected_language_code ? ` · detected ${data.detected_language_code}` : '';
+          $('orb-caption').textContent = `${data.model || $('stt-model').value} transcript ready${detected}. Review before submitting.`;
           toast('Transcribed with Gnani Prisma. Review the text before submitting.', true);
         } else {
           $('orb-caption').textContent = 'Microphone test passed. Play the audio, then type your answer.';
