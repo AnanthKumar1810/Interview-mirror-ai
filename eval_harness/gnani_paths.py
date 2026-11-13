@@ -32,6 +32,10 @@ def validate_manifest(data: dict) -> list[dict]:
             raise ValueError("split must be development or test")
         groups[(case["dataset"], "person", case["person_id"])].add(case["split"])
         groups[(case["dataset"], "variant", case["variant_group_id"])].add(case["split"])
+        # Catch identical rows mirrored under different dataset names as well.
+        normalized_pair = (" ".join(case["question"].casefold().split()),
+                           " ".join(case["transcript"].casefold().split()))
+        groups[("all_datasets", "exact_pair", normalized_pair)].add(case["split"])
         if case["label_kind"] not in {"none", "numeric", "categorical"}:
             raise ValueError("Unsupported label kind")
         if case["label_kind"] == "numeric":
