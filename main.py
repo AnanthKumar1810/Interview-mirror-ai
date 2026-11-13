@@ -496,4 +496,8 @@ def delete_session(session_id: str, user_id: str | None = Depends(current_owner)
     return {"deleted": True, "session_id": session_id}
 
 
+from ws_router import ws_router
+app.include_router(ws_router)
+
+
 

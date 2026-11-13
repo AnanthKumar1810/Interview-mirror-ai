@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#0b1224" />
   <title>InterviewMirror AI — Speak. Reflect. Improve.</title>
   <link rel="stylesheet" href="/static/styles.css" />
+  <script src="/static/realtime-client.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
@@ -56,12 +57,20 @@
             <div class="orb-wrap"><div class="orb" id="orb"><div class="orb-core"><span id="orb-icon">◉</span></div></div><div class="orb-caption" id="orb-caption">Ready when you are</div></div>
             <div class="action-row"><button class="btn btn-secondary" id="listen-btn" disabled>▷ Listen to question</button><button class="btn btn-record" id="record-btn" disabled>● Record answer <span id="record-counter">00:00</span></button></div>
             <div class="action-row record-review"><button class="btn btn-secondary" id="preview-btn" disabled>▷ Replay recording</button><button class="btn btn-secondary" id="save-record-btn" disabled>↓ Save WAV</button></div>
+            <label class="noise-option"><input type="checkbox" id="realtime-toggle"> Enable realtime streaming mode (experimental)</label>
             <label class="noise-option" for="noise-policy">Noise processing <select id="noise-policy"><option value="off">Raw audio (recommended until benchmarked)</option><option value="spectral">Experimental spectral noise reduction</option><option value="deepfilter3" disabled hidden>DeepFilterNet3 neural enhancement (optional install)</option></select></label><label class="noise-option" for="stt-model">Gnani transcription <select id="stt-model"><option value="prisma-v2.5">Prisma v2.5 (default)</option><option value="prisma-v3.0">Prisma v3.0 (mixed language)</option></select></label><label class="consent-option"><input type="checkbox" id="audio-consent"> I consent to sending my recorded answer to Gnani for transcription. I can decline and type instead.</label>
             <small class="noise-caution">Processing is opt-in; enhancement can distort speech and does not guarantee more accurate transcription.</small>
             <small class="record-diagnostics" id="record-diagnostics" role="status" aria-live="polite" hidden></small>
             <small class="record-guidance" id="record-guidance">Record and replay locally without a Gnani key. Real transcription needs API access.</small>
           </div>
-          <div class="answer-area"><div class="answer-label"><label for="answer-input">YOUR ANSWER</label><span id="answer-counter">0 characters</span></div><textarea id="answer-input" rows="5" maxlength="4000" placeholder="Type your answer, or record and review the Gnani transcript when live mode is enabled…" disabled></textarea><div class="answer-footer"><button class="text-btn" id="example-btn" disabled>Use synthetic sample answer</button><button class="btn btn-primary" id="submit-btn" disabled>Get feedback <span>↗</span></button></div></div>
+          <div class="answer-area">
+            <div id="transcript-review" class="transcript-review" hidden>
+              <label>Provider transcript (original)</label>
+              <p id="provider-transcript"></p>
+              <label>Your edited version</label>
+              <textarea id="edited-transcript" rows="3"></textarea>
+            </div>
+            <div class="answer-label"><label for="answer-input">YOUR ANSWER</label><span id="answer-counter">0 characters</span></div><textarea id="answer-input" rows="5" maxlength="4000" placeholder="Type your answer, or record and review the Gnani transcript when live mode is enabled…" disabled></textarea><div class="answer-footer"><button class="text-btn" id="example-btn" disabled>Use synthetic sample answer</button><button class="btn btn-primary" id="submit-btn" disabled>Get feedback <span>↗</span></button></div></div>
         </div>
         <div class="right-panel">
           <div class="coach-card"><div class="coach-top"><span class="coach-symbol">✳</span><span>YOUR PRACTICE COACH</span></div><h2 id="coach-headline">Progress is built one answer at a time.</h2><p id="coach-subtitle">After you respond, we’ll show what worked, what to improve and what to practice next.</p><div id="feedback-panel" class="feedback-panel" hidden>

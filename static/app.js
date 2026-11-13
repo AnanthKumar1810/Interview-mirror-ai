@@ -4,7 +4,8 @@ const $ = (id) => document.getElementById(id);
 const state = { live: false, session: null, question: null, nextQuestion: null, completed: false,
   answered: 0, language: 'en-IN', track: 'agentic', audio: null, objectUrl: null,
   mediaRecorder: null, stream: null, chunks: [], startedAt: 0, ticker: null,
-  busy: false, recording: false, authRequired: false, accessToken: null, nextKind: "core", nextReason: "", recordingWav: null, recordingUrl: null };
+  busy: false, recording: false, authRequired: false, accessToken: null, nextKind: "core", nextReason: "", recordingWav: null, recordingUrl: null,
+  realtimeMode: false, realtimeClient: null, providerTranscript: '', editedTranscript: '' };
 const SAMPLE = {
   agentic: 'I built a code-repair agent with Python and Docker. The problem was unreliable automated edits. I used restricted file tools, wrote regression tests and added human approval before publishing changes. In one local fixture, the updated code passed the maintained test. Broader repair reliability still needs more evaluation.',
   ai: 'I built a classification project with Python and PyTorch. I split the dataset into training and validation sets, checked class imbalance and evaluated recall and precision. I compared my model against a baseline and documented the results. I would next measure performance on new real-world data.',
@@ -113,6 +114,11 @@ async function loadProgress() {
 function setQuestion(question, number, kind = "core", reason = "") {
   updateStepper(1);
   clearRecording();
+  state.providerTranscript = '';
+  state.editedTranscript = '';
+  if ($('transcript-review')) $('transcript-review').hidden = true;
+  if ($('provider-transcript')) $('provider-transcript').textContent = '';
+  if ($('edited-transcript')) $('edited-transcript').value = '';
   state.question = question; state.nextQuestion = null;
   $('question-text').textContent = question;
   $('question-count').textContent = `QUESTION ${String(number).padStart(2, '0')} / 03`;
@@ -128,6 +134,9 @@ function setQuestion(question, number, kind = "core", reason = "") {
   $('record-diagnostics').hidden = true;
   $('next-btn').hidden = true;
   busy(false);
+  if (state.realtimeMode && state.live) {
+    listen();
+  }
 }
 // Keep the start logic explicit: we only show the question returned by the API.
 async function startInterview() {
@@ -172,6 +181,7 @@ function downloadRecording() {
 function stopPlayback() {
   if (state.audio) { state.audio.pause(); state.audio = null; }
   if (state.objectUrl) { URL.revokeObjectURL(state.objectUrl); state.objectUrl = null; }
+  if (state.realtimeClient) { state.realtimeClient.stopTTS(); }
 }
 async function listen() {
   if (!state.live || !state.question || state.busy || state.recording) return;
@@ -214,12 +224,123 @@ async function convertToWav(blob) {
     return writeWav(sampled);
   } finally { await context.close(); }
 }
+function getOrCreateRealtimeClient() {
+  if (!state.realtimeClient && typeof RealtimeInterviewClient !== 'undefined') {
+    state.realtimeClient = new RealtimeInterviewClient();
+    state.realtimeClient.addEventListener('transcript', (ev) => {
+      const data = ev.detail || {};
+      const text = data.text || '';
+      state.providerTranscript = text;
+      state.editedTranscript = text;
+      if ($('provider-transcript')) $('provider-transcript').textContent = text;
+      if ($('edited-transcript')) $('edited-transcript').value = text;
+      if ($('transcript-review')) $('transcript-review').hidden = false;
+      $('answer-input').value = text;
+      $('answer-counter').textContent = `${text.length} characters`;
+      if (data.is_final) {
+        $('orb-caption').textContent = 'Transcript ready. Review or edit before submitting.';
+        if (state.recording) stopRealtimeRecording(false);
+      } else {
+        $('orb-caption').textContent = 'Transcribing live audio…';
+      }
+    });
+
+    state.realtimeClient.addEventListener('error', (ev) => {
+      const err = ev.detail || {};
+      toast(err.message || 'Realtime streaming error');
+    });
+
+    state.realtimeClient.addEventListener('disconnected', () => {
+      if (state.recording && state.realtimeMode) {
+        stopRealtimeRecording();
+      }
+    });
+
+    state.realtimeClient.addEventListener('turn_state', (ev) => {
+      const turn = ev.detail || {};
+      if (turn.state === 'asking') {
+        $('orb-caption').textContent = 'Coach is asking a question…';
+      } else if (turn.state === 'listening') {
+        $('orb-caption').textContent = 'Coach is listening… speak your answer.';
+      }
+    });
+  }
+  return state.realtimeClient;
+}
+
+async function startRealtimeRecording() {
+  if (!state.question || state.busy) return;
+  if (!navigator.mediaDevices) {
+    toast('Microphone access requires a recent browser and localhost or HTTPS.');
+    return;
+  }
+  if (!$('audio-consent').checked) {
+    $('orb-caption').textContent = 'Consent required for streaming. Check consent or use REST mode.';
+    toast('Gnani transcription skipped. Check audio consent if you wish to send the recording.');
+    return;
+  }
+  stopPlayback();
+  clearRecording();
+  try {
+    busy(true);
+    const client = getOrCreateRealtimeClient();
+    if (!client.connected) {
+      await client.connect({
+        track: state.track,
+        language: state.language,
+        stt_model: $('stt-model').value,
+        consent: $('audio-consent').checked
+      });
+    }
+    await client.startCapture();
+    state.recording = true;
+    state.startedAt = Date.now();
+    $('orb').classList.add('recording');
+    $('record-btn').classList.add('recording');
+    $('orb-caption').textContent = 'Recording (realtime streaming)… speak naturally';
+    $('record-btn').innerHTML = '■ Stop recording <span id="record-counter">00:00</span>';
+    busy(false);
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
+      $('record-counter').textContent = `00:${String(elapsed).padStart(2, '0')}`;
+      if (elapsed >= 28 && state.recording) stopRealtimeRecording();
+    };
+    tick();
+    state.ticker = setInterval(tick, 300);
+  } catch (err) {
+    state.recording = false;
+    busy(false);
+    toast(`Streaming capture failed: ${err.message}`);
+  }
+}
+
+async function stopRealtimeRecording(commit = true) {
+  clearInterval(state.ticker);
+  state.recording = false;
+  $('orb').classList.remove('recording');
+  $('record-btn').classList.remove('recording');
+  $('record-btn').innerHTML = '● Record answer <span id="record-counter">00:00</span>';
+  $('orb-caption').textContent = 'Streaming stopped. Review your transcript before submitting.';
+  if (state.realtimeClient) {
+    await state.realtimeClient.stopCapture({ commit });
+  }
+  busy(false);
+}
+
 async function toggleRecording() {
   if (state.recording) {
+    if (state.realtimeMode) {
+      await stopRealtimeRecording();
+      return;
+    }
     if (state.mediaRecorder?.state === 'recording') state.mediaRecorder.stop();
     return;
   }
   if (!state.question || state.busy) return;
+  if (state.realtimeMode) {
+    await startRealtimeRecording();
+    return;
+  }
   if (!navigator.mediaDevices || !window.MediaRecorder) { toast('Microphone recording requires a recent browser and localhost or HTTPS.'); return; }
   stopPlayback(); clearRecording();
   let stream;
@@ -261,6 +382,11 @@ async function toggleRecording() {
           const data = await transcriptResponse.json();
           $('answer-input').value = data.transcript;
           $('answer-counter').textContent = `${data.transcript.length} characters`;
+          state.providerTranscript = data.transcript;
+          state.editedTranscript = data.transcript;
+          if ($('provider-transcript')) $('provider-transcript').textContent = data.transcript;
+          if ($('edited-transcript')) $('edited-transcript').value = data.transcript;
+          if ($('transcript-review')) $('transcript-review').hidden = false;
           const detected = data.detected_language_code ? ` · detected ${data.detected_language_code}` : '';
           $('orb-caption').textContent = `${data.model || $('stt-model').value} transcript ready${detected}. Review before submitting.`;
           toast('Transcribed with Gnani Prisma. Review the text before submitting.', true);
@@ -359,13 +485,23 @@ async function submitAnswer() {
   if (text.length < 3) { toast('Write at least a short answer before requesting feedback.'); return; }
   busy(true); $('submit-btn').textContent = 'Evaluating…';
   try {
-    const res = await api('/api/answer', jsonOptions({ session_id: state.session, text }));
+    const payload = {
+      session_id: state.session,
+      text,
+      provider_transcript: state.providerTranscript || text,
+      edited_transcript: state.editedTranscript || text
+    };
+    const res = await api('/api/answer', jsonOptions(payload));
     const data = await res.json();
     state.answered = data.answered; state.completed = data.completed; state.nextQuestion = data.next_question;
     state.nextKind = data.next_question_kind || 'core'; state.nextReason = data.next_question_reason || '';
     state.question = null;
     updateStepper(2);
     showFeedback(data.feedback);
+    if (state.realtimeClient) {
+      state.realtimeClient.disconnect();
+      state.realtimeClient = null;
+    }
     $('stat-answered').innerHTML = `${data.answered} <small>/ 3</small>`;
     $('stat-score').textContent = `${data.average_score}/100`;
     $('answer-input').disabled = true;
@@ -466,8 +602,34 @@ async function init() {
     try { await api(`/api/session/${encodeURIComponent(state.session)}`, {method: 'DELETE'}); location.reload(); }
     catch (err) { toast('Cannot delete session: ' + err.message); }
   });
-  $('answer-input').addEventListener('input', () => { $('answer-counter').textContent = `${$('answer-input').value.length} characters`; });
-  $('example-btn').addEventListener('click', () => { $('answer-input').value = SAMPLE[state.track]; $('answer-counter').textContent = `${$('answer-input').value.length} characters`; toast('Synthetic example inserted; replace it with your own answer for real practice.'); });
+  const rtToggle = $('realtime-toggle');
+  if (rtToggle) {
+    rtToggle.checked = state.realtimeMode;
+    rtToggle.addEventListener('change', (e) => {
+      state.realtimeMode = !!e.target.checked;
+      toast(`Realtime streaming mode ${state.realtimeMode ? 'enabled' : 'disabled'}.`, true);
+    });
+  }
+  const editedInput = $('edited-transcript');
+  if (editedInput) {
+    editedInput.addEventListener('input', () => {
+      state.editedTranscript = editedInput.value;
+      $('answer-input').value = editedInput.value;
+      $('answer-counter').textContent = `${editedInput.value.length} characters`;
+    });
+  }
+  $('answer-input').addEventListener('input', () => {
+    $('answer-counter').textContent = `${$('answer-input').value.length} characters`;
+    state.editedTranscript = $('answer-input').value;
+    if ($('edited-transcript')) $('edited-transcript').value = $('answer-input').value;
+  });
+  $('example-btn').addEventListener('click', () => {
+    $('answer-input').value = SAMPLE[state.track];
+    state.editedTranscript = SAMPLE[state.track];
+    if ($('edited-transcript')) $('edited-transcript').value = SAMPLE[state.track];
+    $('answer-counter').textContent = `${$('answer-input').value.length} characters`;
+    toast('Synthetic example inserted; replace it with your own answer for real practice.');
+  });
   try {
     const res = await api('/api/status'), data = await res.json(); state.live = data.gnani_live;
     state.authRequired = !!data.auth_required;
