@@ -256,7 +256,7 @@ async function toggleRecording() {
           toast('Gnani transcription skipped. Check audio consent if you wish to send the recording.');
         } else if (state.live) {
           $('orb-caption').textContent = 'Audio checked. Requesting Gnani Prisma transcription…';
-          const form = new FormData(); form.append('audio', wav, 'candidate.wav'); form.append('language', state.language); form.append('track', state.track); form.append('enhancement', $('noise-policy').value); form.append('consent', 'true');
+          const form = new FormData(); form.append('audio', wav, 'candidate.wav'); form.append('language', $('stt-model').value === 'prisma-v3.0' ? 'indic-auto' : state.language); form.append('stt_model', $('stt-model').value); form.append('track', state.track); form.append('enhancement', $('noise-policy').value); form.append('consent', 'true');
           const transcriptResponse = await api('/api/transcribe', { method: 'POST', body: form });
           const data = await transcriptResponse.json();
           $('answer-input').value = data.transcript;
@@ -328,7 +328,7 @@ function showFeedback(feedback) {
   }
   $('followup-text').textContent = feedback.follow_up;
   $('score-disclaimer').textContent = feedback.disclaimer;
-  $('coach-method').textContent = feedback.method.includes('ollama') ? 'Coach: local Ollama suggestions + transparent evidence rubric' : 'Coach: uncalibrated risk-aware text rubric';
+  $('coach-method').textContent = 'Coach: uncalibrated text-based practice rubric';
 }
 
 async function renderReportSummary() {
@@ -485,4 +485,5 @@ async function init() {
   } catch (err) { $('mode-heading').textContent = 'Backend is offline'; $('mode-description').textContent = err.message; }
 }
 init();
+
 
