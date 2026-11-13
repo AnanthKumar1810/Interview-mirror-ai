@@ -10,7 +10,7 @@ The main app's existing heuristic feedback remains a practice baseline. Its opti
 
 ## Provider access and reproducibility
 
-No live Gnani call was made for this change. No API key or running Evon service was found in the execution environment. `GNANI_EVON_BASE_URL` must point to a **local** HTTP server actually serving `gnani/gnani-evon-v3.3-30B-A3B` under that exact model name. The published [Evon model card](https://huggingface.co/gnani/gnani-evon-v3.3-30B-A3B) documents vLLM's `/v1/chat/completions` transport and the needed GPU class. Using an OpenAI-compatible *wire format* does not send data to OpenAI. A URL or model ID outside the allowed local Gnani configuration is rejected. A running server, model identity, quality and latency must be verified by the operator before reporting provider results.
+Live Prisma/Timbre calls have now been run with a user-supplied STT/TTS key; see [measured speech results](LIVE_GNANI_RESULTS_2026-11-13.md). No running Evon service or Evon beta access was available. `GNANI_EVON_BASE_URL` must point to a **local** HTTP server actually serving `gnani/gnani-evon-v3.3-30B-A3B` under that exact model name. The published [Evon model card](https://huggingface.co/gnani/gnani-evon-v3.3-30B-A3B) documents vLLM's `/v1/chat/completions` transport and the needed GPU class. Using an OpenAI-compatible *wire format* does not send data to OpenAI. A URL or model ID outside the allowed local Gnani configuration is rejected. A running server, model identity, quality and latency must be verified by the operator before reporting provider results.
 
 Example local startup, only on a compatible Linux GPU host with model access:
 
@@ -24,15 +24,15 @@ Set `GNANI_EVON_BASE_URL=http://127.0.0.1:8000` in the server environment, then 
 
 | Source | Role | Native metric and caveat |
 | --- | --- | --- |
-| [JorGPT](https://zenodo.org/records/18981627) | University answer grading, especially programming-related questions after topic filtering | Teacher numerical grades; Spanish/English parallel content must stay in one variant family. Its 79 student identities support person-grouped splits. Confirm the record's exact license and column mapping before importing. |
-| [Mohler ASAG](https://huggingface.co/datasets/nkazi/MohlerASAG) | English computer-science short-answer grading | Two graders and average scores on a 0–5 scale. The public mirror has no clear person identifier in the displayed schema, so a person-disjoint test cannot be claimed without provenance. Confirm reuse terms. |
+| [JorGPT](https://zenodo.org/records/18981627) | University answer grading, especially programming-related questions after topic filtering | Teacher numerical grades; Spanish/English parallel content must stay in one variant family. Its 79 student identities support person-grouped splits. Zenodo metadata declares CC BY 4.0; importer and local manifest prepared. |
+| [Mohler ASAG](https://huggingface.co/datasets/nkazi/MohlerASAG) | English computer-science short-answer grading | Two graders and average scores on a 0–5 scale. The public mirror has no clear person identifier in the displayed schema, so a person-disjoint test cannot be claimed without provenance. Dataset card declares CC BY 4.0; importer and local test-only manifest prepared. |
 | [SemEval 2013 Task 7](https://huggingface.co/datasets/Atomi/sem_eval_2013_task_7) | Correctness, contradiction, incompleteness checks | Preserve 2-way, 3-way or 5-way labels as their distinct tasks. Do not convert categories into 0–10 scores. Follow official split, corpus and question IDs. Check mirror permissions. |
 | [Indic-MMLU-Pro](https://huggingface.co/datasets/ai4bharat/indic-mmlu-pro) | Multilingual question comprehension, separate multiple-choice stress test | Choice accuracy, not candidate answer grading. Evon's model card already reports Indic-MMLU-Pro, so contamination is plausible; do not use it as independent validation. |
 | [ScAA](https://aclanthology.org/2020.icon-main.58/) | Hindi/Marathi short-answer correctness, if files and rights are confirmed | Binary correct/incorrect on children's science answers. This is not a technical interview score. Paper availability does not establish dataset reuse permission. |
 | [IndicVoices](https://huggingface.co/datasets/ai4bharat/IndicVoices) | Prisma ASR WER by language and acoustic condition | Audio and transcripts, not interview grades. Dataset card states CC BY 4.0 but access requires accepting its conditions. |
 | Fresh consented mixed-language set | Primary decision set | New technical questions and answers, two independent blinded reviewers, original audio and transcript, stratified languages and noise. No such labels have been collected here. |
 
-No external dataset rows were copied into this change, because access, licensing, mapping and provenance were not fully verified. The local manifest is supplied by the study operator. This also avoids treating public benchmark exposure as a new-person interview test.
+No external dataset rows are committed to this repository. Two licensed datasets were imported to private local manifests. Other sources remain gated, ambiguously licensed or unsuitable as graded free-text answers. Public benchmark exposure still prevents a new-question generalization claim.
 
 ## Benchmark procedure
 
@@ -47,7 +47,7 @@ Manifest case fields: `id`, `dataset`, `split`, `person_id`, `variant_group_id`,
 
 ## Current results and remaining limits
 
-The new targeted tests exercise mock transport and scripted responses only. They measure pipeline behavior, schema validation and failure handling; they are **not** Gnani quality results. No real A/B/C correctness, fairness, WER, cost or latency number exists yet. Evon's published multilingual and translation-related benchmarks are provider claims on different tasks, not evidence that translation helps InterviewMirror. The direct path is the operational default hypothesis because it avoids a transformation and one Evon call, while the A/B test determines whether that translates to better measured accuracy or latency on this task.
+The new targeted tests exercise mock transport and scripted responses only. They measure pipeline behavior, schema validation and failure handling; they are **not** Gnani semantic quality results. Live speech integration and timing results are in the separate report. No real A/B/C correctness, fairness, cost or latency number exists yet. Evon's published multilingual and translation-related benchmarks are provider claims on different tasks, not evidence that translation helps InterviewMirror. The direct path is the operational default hypothesis because it avoids a transformation and one Evon call, while the A/B test determines whether that translates to better measured accuracy or latency on this task.
 
 Sources: [Prisma REST specification](https://docs.gnani.ai/api/STT/speech-to-text), [Prisma v3 model overview](https://docs.gnani.ai/api/STT/models/prisma-v3), [Evon model card](https://huggingface.co/gnani/gnani-evon-v3.3-30B-A3B), [official internship terms](https://www.gnani.ai/great-indian-ai-internship-registration-form).
 
