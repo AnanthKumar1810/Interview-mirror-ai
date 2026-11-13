@@ -81,6 +81,10 @@ def test_split_leakage_rejected():
     with pytest.raises(ValueError, match="leaks"):
         validate_manifest({"cases": [case("a", "development", "p1", "v"),
                                      case("b", "test", "p2", "v")]})
+    mirrored = case("b", "test", "other_person", "other_variant")
+    mirrored["dataset"] = "mirrored_source"
+    with pytest.raises(ValueError, match="leaks"):
+        validate_manifest({"cases": [case("a", "development", "p1", "v1"), mirrored]})
 
 
 def test_fresh_holdout_needs_review_and_consent():
