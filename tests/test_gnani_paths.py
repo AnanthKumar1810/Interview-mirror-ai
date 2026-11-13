@@ -126,3 +126,12 @@ def test_prisma_truncated_result_never_scored():
     with pytest.raises(GnaniError, match="truncated"):
         client.transcribe(b"audio", "en-IN", model_version="prisma-v3.0")
 
+
+def test_prisma_v3_accepts_two_documented_language_hints():
+    def handler(request):
+        assert b"te-IN,en-IN" in request.content
+        return httpx.Response(200, json={"success": True, "transcript": "training data",
+                                          "model": "prisma-v3.0"})
+    client = GnaniClient("test-key", httpx.Client(transport=httpx.MockTransport(handler)))
+    assert client.transcribe(b"audio", "te-IN,en-IN", model_version="prisma-v3.0")["transcript"] == "training data"
+
