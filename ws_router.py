@@ -67,6 +67,7 @@ class _SessionContext:
         self.outgoing: asyncio.Queue[str | bytes] = asyncio.Queue(maxsize=MAX_QUEUE_DEPTH)
 
         self.active = True
+        self.browser_disconnected = False
 
     def next_seq(self) -> int:
         self.seq = _next_seq(self.seq)
@@ -116,6 +117,7 @@ async def _browser_audio_ingest(ws: WebSocket, ctx: _SessionContext) -> None:
         while ctx.active:
             raw = await ws.receive()
             if raw.get("type") == "websocket.disconnect":
+                ctx.browser_disconnected = True
                 ctx.active = False
                 return
 
@@ -163,6 +165,7 @@ async def _browser_audio_ingest(ws: WebSocket, ctx: _SessionContext) -> None:
                 await ctx.audio_to_stt.put(None)  # EOF sentinel
 
     except WebSocketDisconnect:
+        ctx.browser_disconnected = True
         ctx.active = False
     except asyncio.CancelledError:
         raise
@@ -525,11 +528,9 @@ async def interview_ws(ws: WebSocket) -> None:
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
-        try:
-            await ws.send_text(MetricsMessage(data=ctx.metrics.summary()).to_json())
-        except Exception:
-            pass
-        try:
-            await ws.close()
-        except Exception:
-            pass
+        if not ctx.browser_disconnected:
+            try:
+                await ws.send_text(MetricsMessage(data=ctx.metrics.summary()).to_json())
+                await ws.close()
+            except (WebSocketDisconnect, RuntimeError):
+                pass
