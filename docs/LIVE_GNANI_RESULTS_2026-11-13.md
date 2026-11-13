@@ -23,6 +23,8 @@ In a separate generation of the same mixed phrase, v3.0 with `indic-auto` return
 
 Six recordings were sampled deterministically from the first three audio files in each of the Hindi and Telugu [FLEURS test archives](https://huggingface.co/datasets/google/fleurs) (CC BY 4.0). The reference text is the dataset's human transcript, not a TTS input. Each identical audio clip was sent to Prisma v2.5 with its language hint, Prisma v3.0 with `indic-auto`, and v3.0 with `hi-IN,en-IN` or `te-IN,en-IN`. All 18 live STT calls succeeded. This is a tiny convenience sample of read speech, not candidate speech or a representative estimate.
 
+The reproducible probe is `eval_harness/live_fleurs.py`. Run `python eval_harness/live_fleurs.py PATH_TO_LOCAL_KEY results.json` and repeat with a separate result path and `hints` as the final argument. The key is read from the local file and is not written to either result. The script streams only the required samples from the source archives.
+
 | Language | Clips | Reference words | v2.5 word edits | v3.0 word edits, auto | v3.0 word edits, explicit |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Hindi | 3 | 171 | 1 | 35 | 35 |
