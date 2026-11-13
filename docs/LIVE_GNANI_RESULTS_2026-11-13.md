@@ -34,6 +34,10 @@ The word-edit calculation lowercases text, removes punctuation, and compares whi
 
 **Implementation decision:** retain v2.5 as the default for ordinary monolingual speech. Expose v3.0 as an explicit code-mix option and preserve the original transcript so downstream reviewers can inspect language/script choices. Do not route by these six exact-word counts alone; a human-reviewed mixed-language interview sample is required to choose routing and evaluate meaning retention.
 
+## Full app-route smoke
+
+A separate local FastAPI app-route check used the supplied key without storing it in the repository. It loaded the interview page, created a session, generated one English answer with `/api/speak`, converted Timbre's 24 kHz WAV into the browser upload path's 16 kHz mono PCM WAV, called `/api/transcribe` with `prisma-v3.0` and `indic-auto`, and submitted the returned transcript to `/api/answer`. Every route succeeded. The returned transcript exactly matched the synthetic answer text in this one run. The Timbre and Prisma calls took 3,787 ms and 3,263 ms respectively, measured locally including network transfer. The feedback's numeric practice score was not evaluated against a human grade. This checks backend integration, not a real microphone or real interview response.
+
 ## What is still missing
 
 - The four Timbre clips were generated, not spoken by candidates. Their input text is not an independently checked verbatim audio reference. The six FLEURS recordings do have human transcripts, but represent read Hindi/Telugu speech. Their simple word-edit metric is script-sensitive and should not be used as a semantic or mixed-language interview score.
