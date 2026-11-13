@@ -6,6 +6,8 @@ This is a live, paired Gnani speech-recognition check using the user's STT/TTS-o
 
 Each identical clip was sent once to Prisma v2.5 with `hi-IN` or `te-IN`, and once to Prisma v3.0 with `indic-auto` and `codemix` output. Model call order alternated across clips. The run recorded audio duration, file hash, returned model, transcript, first-attempt wall-clock latency, and any provider error. Six failed first attempts were retried once; original errors and timings were retained. The benchmark sent no interview-specific keyterms, while the main app can send question-bank hints, so these figures describe the baseline client configuration rather than every app setting. The private transcript-level JSON and the API key were not committed.
 
+Clip durations ranged from **5.1 to 17.5 seconds**. Every successful first response reported the requested Prisma model ID. V3.0 reported `hi-IN` for all ten successful Hindi first attempts and `te-IN` for all twelve Telugu first attempts.
+
 The public aggregate script is `eval_harness/engineering_asr.py`. Exact-script word error rate (WER) and code-point character error rate (CER) use Unicode NFKC, case folding, punctuation removal, and whitespace word boundaries. They **do not equate transliterated words or judge meaning**. FLEURS references often spell borrowed words in Indic script; v3.0's code-mix output often uses Latin script. A paired bootstrap interval is descriptive for this convenience sample, not a population claim.
 
 ## Measured results
