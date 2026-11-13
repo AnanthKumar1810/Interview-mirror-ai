@@ -14,6 +14,8 @@ See [three-report reconciliation](docs/REPORT_RECONCILIATION.md) for findings ve
 
 With the available Gnani STT/TTS key, follow the [STT/TTS-only delivery plan](docs/GNANI_STT_TTS_ONLY_PLAN.md). The live app's numeric feedback is an uncalibrated text-based practice rubric. The Gnani Evon semantic A/B/C experiment is separate and awaits actual Evon access.
 
+The larger [paired human-recorded ASR engineering check](docs/ENGINEERING_ASR_EVALUATION_2026-11-13.md) reports 24 Hindi/Telugu clips, 48 first-attempt Prisma calls, failure/retry behavior, exact-script WER/CER and latency. Its public benchmark code is `eval_harness/engineering_asr.py`; transcript-level data and the key stay local.
+
 ---
 
 ## Current authenticated storage and noise benchmarking
