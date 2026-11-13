@@ -374,7 +374,11 @@ async def transcribe(audio: UploadFile = File(...), language: str = Form("en-IN"
                      stt_model: str = Form("prisma-v2.5")):
     if stt_model not in {"prisma-v2.5", "prisma-v3.0"}:
         raise HTTPException(422, "Unsupported Prisma model.")
-    if language not in SUPPORTED_LANGUAGES and not (stt_model == "prisma-v3.0" and language == "indic-auto"):
+    v3_hints = language.split(",") if stt_model == "prisma-v3.0" else []
+    valid_v3_hints = (1 <= len(v3_hints) <= 4 and all(hint in SUPPORTED_LANGUAGES for hint in v3_hints)
+                      and len(set(v3_hints)) == len(v3_hints))
+    if language not in SUPPORTED_LANGUAGES and not (stt_model == "prisma-v3.0"
+                                                     and (language == "indic-auto" or valid_v3_hints)):
         raise HTTPException(422, "Unsupported language.")
     if track and track not in QUESTION_BANK:
         raise HTTPException(422, "Unsupported interview focus.")
