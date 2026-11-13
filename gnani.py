@@ -63,16 +63,27 @@ class GnaniClient:
         except httpx.RequestError as exc:
             raise GnaniError("Could not reach Gnani; check your network or provider availability.") from exc
 
-    def transcribe(self, audio_wav: bytes, language: str, bias_terms: list[str] | None = None) -> dict:
-        if language not in VOICE:
+    def transcribe(self, audio_wav: bytes, language: str, bias_terms: list[str] | None = None,
+                   *, model_version: str = "prisma-v2.5") -> dict:
+        if model_version not in {"prisma-v2.5", "prisma-v3.0"}:
+            raise GnaniError("Unsupported Prisma model.")
+        v3_hints = language.split(",") if model_version == "prisma-v3.0" else []
+        valid_v3_hints = (1 <= len(v3_hints) <= 4 and all(hint in VOICE for hint in v3_hints)
+                          and len(set(v3_hints)) == len(v3_hints))
+        if language not in VOICE and not (model_version == "prisma-v3.0"
+                                          and (language == "indic-auto" or valid_v3_hints)):
             raise GnaniError("Unsupported transcription language.")
         # Official docs: omit model for default Prisma v2.5. The provider only
         # needs audio_file and language_code; format=transcribe cleans punctuation.
         data = {"language_code": language, "format": "transcribe"}
+        if model_version == "prisma-v3.0":
+            data.update({"model": "prisma-v3.0", "format": "codemix"})
         # Prisma v2.5: single letter-only words, paired with an allowed score.
         # Keep the list small and review the resulting transcript before scoring.
         terms = list(dict.fromkeys(term for term in (bias_terms or []) if term.isascii() and term.isalpha() and 4 <= len(term) <= 40))[:100]
-        if terms:
+        if terms and model_version == "prisma-v3.0":
+            data["keyterms"] = json.dumps(terms)
+        elif terms:
             data.update({"bias_list": json.dumps(terms), "bias_score": "1.0"})
         response = self._post(
             STT_URL,
@@ -90,10 +101,13 @@ class GnaniClient:
             raise GnaniError("Gnani Prisma response did not contain a transcript.")
         if not transcript.strip():
             raise GnaniError("No speech detected. Please record a clearer, longer answer.")
+        if payload.get("truncated") is True:
+            raise GnaniError("Prisma transcript was truncated; retry with shorter audio.")
         return {
             "transcript": transcript.strip(),
-            "model": payload.get("model", "prisma-v2.5"),
+            "model": payload.get("model", model_version),
             "request_id": payload.get("request_id"),
+            "detected_language_code": payload.get("detected_language_code"),
         }
 
     def synthesize(self, text: str, language: str) -> bytes:
@@ -128,4 +142,6 @@ class GnaniClient:
         if not valid:
             raise GnaniError("Gnani Timbre did not return a valid WAV recording.")
         return data
+
+
 

@@ -17,7 +17,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
-from coach import QUESTION_BANK, TRACK_LABELS, evaluate, ollama_refine
+from coach import QUESTION_BANK, TRACK_LABELS, evaluate
+from gnani_semantic import Case, LocalEvon, evaluate_paths, ProviderUnavailable, InvalidModelOutput
 from adaptive import select_followup
 from gnani import GnaniClient, GnaniError
 from audio_tools import ALLOWED_AUDIO_MIME, MAX_AUDIO_BYTES, inspect_pcm16_wav
@@ -179,6 +180,23 @@ class SpeakRequest(BaseModel):
     text: str = Field(min_length=1, max_length=650)
     language: str = "en-IN"
 
+class SemanticRequest(BaseModel):
+    question: str = Field(min_length=3, max_length=1000)
+    reference: str = Field(min_length=3, max_length=4000)
+    transcript: str = Field(min_length=3, max_length=4000)
+    mode: str = "all"
+
+@app.post("/api/semantic/evaluate")
+def semantic_evaluate(request: SemanticRequest, user_id: str | None = Depends(current_owner)):
+    if request.mode not in {"direct", "all"}:
+        raise HTTPException(422, "mode must be direct or all")
+    try:
+        result = evaluate_paths(Case(request.question, request.reference, request.transcript),
+                                LocalEvon(), include_translation=request.mode == "all")
+    except (ProviderUnavailable, InvalidModelOutput) as exc:
+        raise HTTPException(503, str(exc)) from exc
+    return result
+
 
 def get_session(session_id: str, owner_id: str | None = None) -> Session:
     # Ownership is enforced in SQL; different users receive the same 404 as a missing ID.
@@ -224,7 +242,7 @@ def status():
     gnani_on = provider().enabled
     return {"gnani_live": gnani_on,
             "stt_model": "prisma-v2.5", "tts_model": "timbre-v2.5",
-            "ollama_enabled": bool(os.getenv("OLLAMA_MODEL", "").strip()),
+            "evon_local_configured": bool(os.getenv("GNANI_EVON_BASE_URL", "").strip()),
             "neural_enhancement_dependency_present": __import__("importlib.util", fromlist=["find_spec"]).find_spec("df") is not None,
             "tracks": TRACK_LABELS, "languages": SUPPORTED_LANGUAGES,
             "mode": "gnani_live" if gnani_on else "local_demo",
@@ -269,7 +287,6 @@ def answer(request: AnswerRequest, user_id: str | None = Depends(current_owner))
     # original prompt's rubric. Numerical scores are practice indicators only.
     fixed_index = 0 if session.question_index == 0 else 1 if session.question_index == 2 else None
     feedback = evaluate_for_app(text, q, session.language, session.track, fixed_index)
-    feedback = ollama_refine(text, qtext, feedback)
     session.answers.append({"question": qtext, "question_kind": session.pending_kind,
                             "question_reason": session.pending_reason,
                             "transcript": text, "feedback": feedback})
@@ -353,8 +370,15 @@ async def audio_check(audio: UploadFile = File(...), user_id: str | None = Depen
 @app.post("/api/transcribe")
 async def transcribe(audio: UploadFile = File(...), language: str = Form("en-IN"),
                      enhancement: str = Form("off"), consent: bool = Form(False), track: str = Form(""),
-                     user_id: str | None = Depends(current_owner)):
-    if language not in SUPPORTED_LANGUAGES:
+                     user_id: str | None = Depends(current_owner),
+                     stt_model: str = Form("prisma-v2.5")):
+    if stt_model not in {"prisma-v2.5", "prisma-v3.0"}:
+        raise HTTPException(422, "Unsupported Prisma model.")
+    v3_hints = language.split(",") if stt_model == "prisma-v3.0" else []
+    valid_v3_hints = (1 <= len(v3_hints) <= 4 and all(hint in SUPPORTED_LANGUAGES for hint in v3_hints)
+                      and len(set(v3_hints)) == len(v3_hints))
+    if language not in SUPPORTED_LANGUAGES and not (stt_model == "prisma-v3.0"
+                                                     and (language == "indic-auto" or valid_v3_hints)):
         raise HTTPException(422, "Unsupported language.")
     if track and track not in QUESTION_BANK:
         raise HTTPException(422, "Unsupported interview focus.")
@@ -370,7 +394,8 @@ async def transcribe(audio: UploadFile = File(...), language: str = Form("en-IN"
     _reserve_provider_call()
     try:
         terms = [term for question in QUESTION_BANK.get(track, []) for term in question.get("keywords", [])]
-        response = await run_in_threadpool(provider().transcribe, processed, language, terms)
+        response = await run_in_threadpool(provider().transcribe, processed, language, terms,
+                                           model_version=stt_model)
         # Do not expose recorded audio or secrets. Enhancement accuracy is unverified.
         return {**response, "audio_processing": noise_info}
     except GnaniError as exc:
@@ -437,7 +462,8 @@ async def submit_answer_compat(
     if not text:
         if audio is None:
             raise HTTPException(422, "Provide a transcript or a 16 kHz mono WAV recording.")
-        stt_metadata = await transcribe(audio, session.language, enhancement, consent, user_id)
+        stt_metadata = await transcribe(audio, session.language, enhancement, consent,
+                                        track="", user_id=user_id, stt_model="prisma-v2.5")
         text = stt_metadata["transcript"]
     # The UI's mock transcript field never masquerades as an STT response.
     result = answer(AnswerRequest(session_id=session_id, text=text), user_id)
@@ -468,4 +494,10 @@ def delete_session(session_id: str, user_id: str | None = Depends(current_owner)
     get_session(session_id, user_id)
     STORE.delete_session(session_id, user_id)
     return {"deleted": True, "session_id": session_id}
+
+
+from ws_router import ws_router
+app.include_router(ws_router)
+
+
 
