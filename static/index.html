@@ -22,11 +22,11 @@
       </div>
     </aside>
     <main class="main">
-      <header class="topbar"><span class="breadcrumb">Workspace <span>/</span> Hands-free interview</span><span class="top-right">Realtime Voice · Zero Manual Controls <span class="sparkle">✦</span></span></header>
+      <header class="topbar"><span class="breadcrumb">Interview studio <span>/</span> Practice session</span><span class="top-right">Hands-free voice practice <span class="sparkle">✦</span></span></header>
       <section class="intro">
-        <div class="eyebrow"><span class="mini-dot"></span> HANDS-FREE TECHNICAL INTERVIEW PRACTICE</div>
-        <h1>Speak naturally.<br /><em>Autonomous turn-taking voice coach.</em></h1>
-        <p>Choose your focus, give consent, and press Start. The coach speaks questions, listens, detects when you finish, and speaks the next question automatically—no buttons required.</p>
+        <div class="eyebrow"><span class="mini-dot"></span> INTERVIEWMIRROR AI</div>
+        <h1>Practice your interview<br /><em>by speaking naturally.</em></h1>
+        <p>Choose a topic and language, then start. Your coach asks a question, listens to your answer, and continues when you finish speaking.</p>
       </section>
       <div class="mode-banner" id="mode-banner" role="status"><span class="mode-icon">●</span><div><strong id="mode-heading">Checking Gnani connection…</strong><span id="mode-description">Testing server streaming endpoints.</span></div><span class="mode-tag" id="mode-tag">Checking</span></div>
 
@@ -44,10 +44,9 @@
       </section>
 
       <section id="studio-view" aria-label="Interview studio">
-        <!-- Pre-interview Setup Card -->
-        <section class="config-card" id="setup-card">
-          <div class="card-heading"><div><span class="overline">01 / SETUP YOUR PRACTICE</span><h2>Choose role &amp; language</h2></div><span class="time-chip">~ 5 MIN PRACTICE</span></div>
-          <div class="form-grid">
+        <section class="config-card setup-card" id="setup-card">
+          <div class="card-heading"><div><span class="overline">STEP 1 OF 3 · GET READY</span><h2>Set up your interview</h2><p class="card-description">Two quick choices before your spoken practice begins.</p></div><span class="time-chip">3 QUESTIONS · ABOUT 5 MIN</span></div>
+          <div class="form-grid setup-grid">
             <label>Interview focus
               <select id="track">
                 <option value="agentic">Agentic AI &amp; LLMs</option>
@@ -62,18 +61,21 @@
                 <option value="hi-IN">हिन्दी · Hindi</option>
               </select>
             </label>
-            <label style="grid-column: 1 / -1; margin-top: 4px;">GitHub profile or repository (optional)
-              <input type="text" id="github-repo" placeholder="e.g. AnanthKumar1810 or AnanthKumar1810/bug-fixer" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border, #333); background: var(--bg-card, #1a1a1a); color: var(--text-primary, #fff); font-size: 0.95rem; margin-top: 6px;">
-            </label>
-            <label style="grid-column: 1 / -1; margin-top: 4px;">Resume text &amp; achievements (optional)
-              <textarea id="resume-text" rows="3" placeholder="Paste your resume summary, background, projects, and achievements (e.g. hackathons, awards, certifications, metrics)..." style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border, #333); background: var(--bg-card, #1a1a1a); color: var(--text-primary, #fff); font-size: 0.95rem; margin-top: 6px; resize: vertical;"></textarea>
-            </label>
-            <div style="grid-column: 1 / -1; margin-top: 6px;">
-              <label class="consent-option">
-                <input type="checkbox" id="audio-consent"> <strong>I consent to streaming my microphone audio to Gnani for real-time transcription.</strong>
+          </div>
+          <details class="setup-optional" id="profile-details">
+            <summary>Add your background for tailored questions <span>Optional</span></summary>
+            <div class="optional-fields">
+              <label>GitHub profile or repository
+                <input type="text" id="github-repo" placeholder="username or username/repository" autocomplete="off">
+              </label>
+              <label>Resume summary and achievements
+                <textarea id="resume-text" rows="3" placeholder="Share projects, skills, achievements, or a short resume summary."></textarea>
               </label>
             </div>
-            <button id="start-btn" class="btn btn-primary" style="grid-column: 1 / -1; margin-top: 8px;">Start interview <span>↗</span></button>
+          </details>
+          <div class="setup-footer">
+            <label class="consent-option"><input type="checkbox" id="audio-consent"><span>I agree to stream my microphone audio to Gnani for live transcription.</span></label>
+            <div class="start-row"><button id="start-btn" class="btn btn-primary">Start spoken interview <span>↗</span></button><small>After Start, the conversation moves forward automatically.</small></div>
           </div>
         </section>
 
@@ -81,14 +83,14 @@
         <section class="work-grid" id="interview-workspace">
           <div class="interview-card">
             <div class="interview-header">
-              <div><span class="overline">02 / HANDS-FREE PRACTICE</span><h2>Spoken interview room</h2></div>
+              <div><span class="overline">STEP 2 OF 3 · SPEAK</span><h2>Your interview</h2></div>
               <div class="session-pill" id="session-pill"><span></span> Not started</div>
             </div>
             <div class="question-area">
-              <ol class="stepper" id="interview-stepper" aria-label="Interview questions"><li>1. Prepare</li><li>2. Practice</li><li>3. Review</li></ol>
+              <ol class="stepper" id="interview-stepper" aria-label="Interview progress"><li>1. Get ready</li><li>2. Interview</li><li>3. Review</li></ol>
               <div class="question-meta"><span id="question-count">QUESTION 00 / 03</span><span id="question-track">AGENTIC AI</span></div>
-              <h3 id="question-text">Click Start to begin. The coach will speak your first question.</h3>
-              <p id="question-hint">Once started, speak naturally. The coach listens, detects when you finish, and advances automatically.</p>
+              <h3 id="question-text">Your first question will appear here.</h3>
+              <p id="question-hint">Start the interview above. Listen to the question, then answer in your own words.</p>
 
               <!-- Expressive Animated Status Orb -->
               <div class="orb-wrap">
@@ -97,24 +99,24 @@
               </div>
 
               <!-- Hands-Free Active Action Row: ONLY End Interview -->
-              <div class="action-row" id="handsfree-controls" style="justify-content: center; margin: 16px 0;">
-                <button type="button" class="btn btn-secondary" id="end-interview-btn" style="color: #f87171; border-color: #f87171;" hidden>■ End interview early</button>
+              <div class="action-row" id="handsfree-controls">
+                <button type="button" class="btn btn-secondary" id="end-interview-btn" hidden>End interview</button>
               </div>
 
               <!-- Unobtrusive Live Transcript Area -->
-              <div class="answer-area" id="live-transcript-area" style="margin-top: 12px;">
+              <div class="answer-area" id="live-transcript-area">
                 <div class="answer-label">
                   <label for="live-transcript">LIVE SPOKEN ANSWER</label>
                   <span id="answer-counter">0 words</span>
                 </div>
-                <div id="live-transcript" class="live-transcript-box" style="min-height: 80px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-size: 15px; line-height: 1.5; color: #e2e8f0;">
+                <div id="live-transcript" class="live-transcript-box" role="status" aria-live="polite">
                   <em>Your spoken answer will appear here in real time as you speak…</em>
                 </div>
               </div>
 
               <!-- Collapsible Diagnostic & REST Fallback Panel (hidden during hands-free interview) -->
-              <details id="diagnostic-details" style="margin-top: 20px; font-size: 13px; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
-                <summary style="cursor: pointer; user-select: none;">▷ REST Diagnostic &amp; Manual Fallback Controls</summary>
+              <details id="diagnostic-details" class="diagnostic-details">
+                <summary>Audio test and manual fallback</summary>
                 <div style="padding: 12px 0;">
                   <p style="margin-bottom: 8px;">Use these controls for offline microphone preflight or REST testing without WebSockets:</p>
                   <div class="action-row" style="margin-bottom: 8px;">
@@ -174,15 +176,15 @@
                 <h4>Concepts to revisit</h4>
                 <ul id="report-priorities"></ul>
 
-                <div id="report-candidate-profile" style="margin-top: 14px; padding: 12px; background: rgba(30, 41, 59, 0.5); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);" hidden>
-                  <h4 style="margin-bottom: 6px;">Evaluated background &amp; achievements</h4>
-                  <div id="report-profile-content" style="font-size: 13px; color: #cbd5e1;"></div>
+                <div id="report-candidate-profile" class="report-detail" hidden>
+                  <h4>Evaluated background &amp; achievements</h4>
+                  <div id="report-profile-content"></div>
                 </div>
 
                 <!-- Transcript Review & Correction Area -->
-                <div id="transcript-correction-area" style="margin-top: 16px; padding: 12px; background: rgba(30, 41, 59, 0.7); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                  <h4 style="margin-bottom: 6px;">Review &amp; correct transcripts</h4>
-                  <p style="font-size: 13px; color: #94a3b8; margin-bottom: 10px;">Select any answer to inspect original speech recognition and recompute practice score if corrected:</p>
+                <div id="transcript-correction-area" class="report-detail">
+                  <h4>Review &amp; correct transcripts</h4>
+                  <p>Select an answer to review its transcript and recalculate its practice score after a correction.</p>
                   <div id="correction-answers-list"></div>
                 </div>
 
@@ -216,10 +218,11 @@
 
       <!-- Progress review tab -->
       <section id="progress-view" class="progress-view" aria-labelledby="progress-heading" hidden>
-        <div class="card-heading"><div><span class="overline">YOUR PRACTICE HISTORY</span><h2 id="progress-heading">Progress review</h2></div><button type="button" class="btn btn-secondary" id="progress-refresh">Refresh</button></div>
+        <div class="card-heading"><div><span class="overline">STEP 3 OF 3 · REVIEW</span><h2 id="progress-heading">Your interview history</h2><p class="card-description">Open a saved session to revisit answers and feedback.</p></div><button type="button" class="btn btn-secondary" id="progress-refresh">Refresh</button></div>
         <p id="progress-status" role="status" aria-live="polite">Sign in to review saved interviews.</p>
         <div id="progress-list" class="progress-list"></div>
         <section id="progress-detail" class="progress-detail" aria-label="Selected interview report" hidden></section>
+        <button type="button" class="btn btn-secondary progress-back" id="progress-back">← Back to interview studio</button>
       </section>
 
       <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>

@@ -98,6 +98,7 @@ function updateStepper(stage) {
 
 function showView(name) {
   const progress = name === 'progress';
+  document.querySelector('.main')?.classList.toggle('progress-mode', progress);
   $('studio-view').hidden = progress;
   $('progress-view').hidden = !progress;
   $('studio-nav').classList.toggle('active', !progress);
@@ -106,7 +107,7 @@ function showView(name) {
   $('progress-nav').toggleAttribute('aria-current', progress);
   const breadcrumb = document.querySelector('.breadcrumb');
   if (breadcrumb) {
-    breadcrumb.textContent = progress ? 'Workspace / Progress review' : 'Workspace / Hands-free interview';
+    breadcrumb.textContent = progress ? 'Interview studio / Progress review' : 'Interview studio / Practice session';
   }
 }
 
@@ -239,7 +240,7 @@ async function startHandsFreeInterview() {
     }
   } finally {
     busy(false);
-    if ($('start-btn')) $('start-btn').innerHTML = 'Start interview <span>↗</span>';
+    if ($('start-btn')) $('start-btn').innerHTML = 'Start spoken interview <span>↗</span>';
   }
 }
 
@@ -368,29 +369,27 @@ async function populateCorrectionReview() {
     answers.forEach((ans, idx) => {
       const container = document.createElement('div');
       container.className = 'correction-card';
-      container.style.cssText = 'margin-bottom: 14px; padding: 10px; background: rgba(15, 23, 42, 0.6); border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);';
 
       appendText(container, 'strong', `Question ${idx + 1}: ${ans.question}`, 'd-block');
 
       const origText = ans.provider_transcript || ans.transcript || '';
       const origP = document.createElement('p');
-      origP.style.cssText = 'font-size: 13px; color: #94a3b8; margin: 4px 0;';
+      origP.className = 'correction-original';
       appendText(origP, 'strong', 'Original transcript:');
       origP.appendChild(document.createTextNode(` ${origText}`));
       container.appendChild(origP);
 
       const label = document.createElement('label');
       label.textContent = 'Corrected text (edit and re-score):';
-      label.style.cssText = 'font-size: 12px; color: #cbd5e1; display: block; margin-top: 6px;';
+      label.className = 'correction-label';
       const textarea = document.createElement('textarea');
       textarea.rows = 2;
-      textarea.style.cssText = 'width: 100%; font-size: 13px; margin: 4px 0 8px 0; padding: 6px; border-radius: 4px;';
+      textarea.className = 'correction-input';
       textarea.value = ans.edited_transcript || origText;
 
       const recomputeBtn = document.createElement('button');
       recomputeBtn.type = 'button';
       recomputeBtn.className = 'btn btn-secondary';
-      recomputeBtn.style.cssText = 'font-size: 12px; padding: 4px 10px;';
       recomputeBtn.textContent = '↻ Recompute score for this answer';
 
       recomputeBtn.addEventListener('click', async () => {
@@ -822,6 +821,7 @@ async function init() {
 
   $('studio-nav').addEventListener('click', () => showView('studio'));
   $('progress-nav').addEventListener('click', () => { showView('progress'); loadProgress(); });
+  $('progress-back').addEventListener('click', () => showView('studio'));
   $('progress-refresh').addEventListener('click', loadProgress);
 
   // Hands-free controls
@@ -863,11 +863,11 @@ async function init() {
     $('side-dot').classList.toggle('live', state.live);
 
     $('mode-banner').classList.toggle('live', state.live);
-    $('mode-heading').textContent = state.live ? 'Voice streaming active — click Start to practice' : 'Local practice mode · microphone test available';
+    $('mode-heading').textContent = state.live ? 'Voice service ready' : 'Preview mode · live voice unavailable';
     $('mode-description').textContent = state.live
-      ? 'Hands-free mode speaks questions and listens automatically using Gnani realtime streaming.'
-      : 'Connect your GNANI_API_KEY for live streaming. Practice room works with simulated speech in demo mode.';
-    $('mode-tag').textContent = state.live ? 'GNANI STREAMING' : 'DEMO MODE';
+      ? 'Gnani Prisma and Timbre are connected. Your coach can speak and listen automatically.'
+      : 'You can explore the app and test your microphone locally. Connect Gnani access to use the live spoken interview.';
+    $('mode-tag').textContent = state.live ? 'VOICE READY' : 'PREVIEW';
   } catch (err) {
     $('mode-heading').textContent = 'Backend is offline';
     $('mode-description').textContent = err.message;
