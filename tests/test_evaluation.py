@@ -115,3 +115,35 @@ def test_telegu_transcript_and_followup_have_correct_locale():
     assert 'మీ' in j['next_question']
     assert 'మీ' in j['next_question_reason'] or 'ముందటి' in j['next_question_reason']
     assert j['feedback']['method'] == 'risk_aware_rubric_v3'
+
+
+def test_four_dimension_rubric_weights_and_quotes():
+    q = QUESTION_BANK['agentic'][0]
+    text = (
+        "First I built an agent workflow with tool integration. "
+        "I chose to restrict permissions instead of giving root access because arbitrary edits can fail. "
+        "We tested 10 cases and verified latency under 200ms."
+    )
+    res = evaluate(text, q, 'en-IN', 'agentic', 0)
+    assert 'four_dimension_rubric' in res
+    rubric = res['four_dimension_rubric']
+    assert set(rubric.keys()) == {'technical_accuracy', 'design_tradeoffs', 'project_evidence', 'explanation_clarity'}
+    
+    assert rubric['technical_accuracy']['max'] == 30
+    assert rubric['design_tradeoffs']['max'] == 25
+    assert rubric['project_evidence']['max'] == 25
+    assert rubric['explanation_clarity']['max'] == 20
+
+    assert 0 <= rubric['technical_accuracy']['score'] <= 30
+    assert 0 <= rubric['design_tradeoffs']['score'] <= 25
+    assert 0 <= rubric['project_evidence']['score'] <= 25
+    assert 0 <= rubric['explanation_clarity']['score'] <= 20
+
+    assert res['four_dimension_score'] == sum(dim['score'] for dim in rubric.values())
+    assert res['rubric_type'] == 'uncalibrated_practice_guidance'
+
+    # Verify verbatim quotes
+    for dim_name, dim_data in rubric.items():
+        for quote in dim_data.get('quotes', []):
+            assert quote in text, f"Fabricated quote detected in {dim_name}: '{quote}'"
+

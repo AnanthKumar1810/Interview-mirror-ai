@@ -25,6 +25,10 @@ PATTERNS = [
      "The response appears to confuse precision with recall."),
     ("data_leakage_claim", re.compile(r"\b(?:train(?:ed|ing)?\s+on\s+(?:the\s+)?test\s+(?:set|data)|(?:test\s+(?:set|data))\s+(?:was|were)\s+used\s+(?:for|to)\s+train|used\s+(?:my|the)?\s*test\s+(?:set|data)\s+to\s+train)\b", re.I),
      "Training on test data can invalidate a held-out generalization assessment."),
+    ("asyncio_cpu_parallel_misconception", re.compile(r"\b(?:asyncio|async\s+await)\b.{0,60}\b(?:runs?\s+(?:in\s+)?parallel|parallel\s+cpu|cpu\s+parallel|all\s+cores|multiprocessing\s+automatically)\b", re.I),
+     "asyncio uses single-threaded cooperative multitasking for I/O; CPU-bound workloads block the event loop unless offloaded to a process pool."),
+    ("docker_virtual_machine_misconception", re.compile(r"\b(?:docker|container)\b.{0,60}\b(?:is\s+a\s+full\s+(?:virtual\s+machine|vm)|runs\s+a\s+guest\s+os\s+kernel|hardware\s+hypervisor)\b", re.I),
+     "Docker containers share the host OS kernel via namespaces and cgroups, rather than running a full guest OS kernel on a hardware hypervisor."),
 ]
 
 
@@ -105,7 +109,7 @@ def evaluate_robust(
         dims["technical_coverage"] = min(dims["technical_coverage"], 10)
         dims["evidence"] = min(dims["evidence"], 3)
         dims["clarity"] = min(dims["clarity"], 8)
-    if any(f["code"] in {"absolute_perfection_claim", "known_metric_confusion", "data_leakage_claim"} for f in flags):
+    if any(f["code"] in {"absolute_perfection_claim", "known_metric_confusion", "data_leakage_claim", "asyncio_cpu_parallel_misconception", "docker_virtual_machine_misconception"} for f in flags):
         dims["technical_coverage"] = min(dims["technical_coverage"], 10)
         dims["evidence"] = min(dims["evidence"], 3)
         dims["relevance"] = min(dims["relevance"], 15)
@@ -132,6 +136,7 @@ def evaluate_robust(
         "method": "risk_aware_rubric_v3" + ("_with_optional_llm_signal" if semantic else ""),
         "factual_assessment": "model_assessed_not_verified" if semantic else "not_verified",
         "risk_flags": flags,
+        "risks": flags,
         "semantic_signal": semantic,
         "human_review_recommended": bool(flags) or semantic is None,
         "scoring_confidence": "unvalidated",

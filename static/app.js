@@ -1,11 +1,40 @@
 'use strict';
 
 const $ = (id) => document.getElementById(id);
-const state = { live: false, session: null, question: null, nextQuestion: null, completed: false,
-  answered: 0, language: 'en-IN', track: 'agentic', audio: null, objectUrl: null,
-  mediaRecorder: null, stream: null, chunks: [], startedAt: 0, ticker: null,
-  busy: false, recording: false, authRequired: false, accessToken: null, nextKind: "core", nextReason: "", recordingWav: null, recordingUrl: null,
-  realtimeMode: false, realtimeClient: null, providerTranscript: '', editedTranscript: '' };
+
+const state = {
+  live: false,
+  session: null,
+  question: null,
+  nextQuestion: null,
+  completed: false,
+  answered: 0,
+  language: 'en-IN',
+  track: 'agentic',
+  sttModel: 'prisma-v2.5',
+  audio: null,
+  objectUrl: null,
+  mediaRecorder: null,
+  stream: null,
+  chunks: [],
+  startedAt: 0,
+  ticker: null,
+  busy: false,
+  recording: false,
+  authRequired: false,
+  accessToken: null,
+  nextKind: 'core',
+  nextReason: '',
+  recordingWav: null,
+  recordingUrl: null,
+
+  // Hands-free realtime client
+  realtimeClient: null,
+  isHandsFree: false,
+  providerTranscript: '',
+  editedTranscript: '',
+};
+
 const SAMPLE = {
   agentic: 'I built a code-repair agent with Python and Docker. The problem was unreliable automated edits. I used restricted file tools, wrote regression tests and added human approval before publishing changes. In one local fixture, the updated code passed the maintained test. Broader repair reliability still needs more evaluation.',
   ai: 'I built a classification project with Python and PyTorch. I split the dataset into training and validation sets, checked class imbalance and evaluated recall and precision. I compared my model against a baseline and documented the results. I would next measure performance on new real-world data.',
@@ -14,8 +43,12 @@ const SAMPLE = {
 
 function toast(message, ok = false) {
   const el = $('toast');
-  el.textContent = message; el.className = `toast ${ok ? 'ok' : ''}`; el.hidden = false;
-  clearTimeout(toast.timer); toast.timer = setTimeout(() => { el.hidden = true; }, 6500);
+  if (!el) return;
+  el.textContent = message;
+  el.className = `toast ${ok ? 'ok' : ''}`;
+  el.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { el.hidden = true; }, 6500);
 }
 
 async function api(path, options = {}) {
@@ -23,29 +56,38 @@ async function api(path, options = {}) {
   try {
     const headers = new Headers(options.headers || {});
     if (state.accessToken) headers.set('Authorization', `Bearer ${state.accessToken}`);
-    res = await fetch(path, {...options, headers});
+    res = await fetch(path, { ...options, headers });
+  } catch {
+    throw new Error('Cannot reach the backend. Check that the server is running.');
   }
-  catch { throw new Error('Cannot reach the local backend. Check that uvicorn is running.'); }
   if (!res.ok) {
     let detail = `Request failed (${res.status}).`;
-    try { const obj = await res.json(); detail = typeof obj.detail === 'string' ? obj.detail : detail; } catch {}
+    try {
+      const obj = await res.json();
+      detail = typeof obj.detail === 'string' ? obj.detail : detail;
+    } catch {}
     throw new Error(detail);
   }
   return res;
 }
-const jsonOptions = (obj) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
+
+const jsonOptions = (obj) => ({
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(obj)
+});
+
 function busy(on) {
   state.busy = on;
-  $('start-btn').disabled = on || state.recording || (state.authRequired && !state.accessToken);
-  $('submit-btn').disabled = on || !state.session || !state.question || state.completed || state.recording;
-  $('listen-btn').disabled = on || !state.live || !state.question || state.recording;
-  $('record-btn').disabled = (on && !state.recording) || !state.question || state.completed;
-  $('example-btn').disabled = on || !state.question || state.completed || state.recording;
-  $('preview-btn').disabled = on || !state.recordingWav || state.recording;
-  $('save-record-btn').disabled = on || !state.recordingWav || state.recording;
+  if ($('start-btn')) $('start-btn').disabled = on || (state.authRequired && !state.accessToken);
+  if ($('submit-btn')) $('submit-btn').disabled = on;
+  if ($('record-btn')) $('record-btn').disabled = on && !state.recording;
 }
+
 function updateStepper(stage) {
-  const steps = $('interview-stepper').children;
+  const stepper = $('interview-stepper');
+  if (!stepper) return;
+  const steps = stepper.children;
   for (let i = 0; i < steps.length; i++) {
     steps[i].classList.toggle('current', i === stage);
     steps[i].classList.toggle('done', i < stage);
@@ -53,148 +95,593 @@ function updateStepper(stage) {
     else steps[i].removeAttribute('aria-current');
   }
 }
+
 function showView(name) {
   const progress = name === 'progress';
-  $('studio-view').hidden = progress; $('progress-view').hidden = !progress;
+  $('studio-view').hidden = progress;
+  $('progress-view').hidden = !progress;
   $('studio-nav').classList.toggle('active', !progress);
   $('progress-nav').classList.toggle('active', progress);
   $('studio-nav').toggleAttribute('aria-current', !progress);
   $('progress-nav').toggleAttribute('aria-current', progress);
-  document.querySelector('.breadcrumb').textContent = progress ? 'Workspace / Progress review' : 'Workspace / Interview studio';
-}
-function appendText(parent, tag, value, className) {
-  const element = document.createElement(tag); element.textContent = value;
-  if (className) element.className = className;
-  parent.appendChild(element); return element;
-}
-async function showProgressReport(sessionId) {
-  $('progress-detail').hidden = false;
-  $('progress-detail').replaceChildren();
-  appendText($('progress-detail'), 'p', 'Loading interview report…');
-  try {
-    const report = await (await api(`/api/report/${encodeURIComponent(sessionId)}`)).json();
-    const detail = $('progress-detail'); detail.replaceChildren();
-    appendText(detail, 'h3', `${report.track} · ${report.language}`);
-    appendText(detail, 'p', `${report.answered} of ${report.total_questions} answers · Average practice score: ${report.average_score ?? '—'}/100`);
-    appendText(detail, 'p', report.note, 'progress-note');
-    for (const [index, item] of report.results.entries()) {
-      const section = document.createElement('section'); section.className = 'progress-answer';
-      appendText(section, 'h4', `Question ${index + 1}: ${item.question}`);
-      appendText(section, 'p', item.transcript, 'progress-transcript');
-      appendText(section, 'p', `Practice score: ${item.feedback.score}/100`);
-      const list = document.createElement('ul');
-      for (const tip of item.feedback.improvements || []) appendText(list, 'li', tip);
-      section.appendChild(list); detail.appendChild(section);
-    }
-  } catch (error) {
-    $('progress-detail').replaceChildren();
-    appendText($('progress-detail'), 'p', `Could not load report: ${error.message}`);
+  const breadcrumb = document.querySelector('.breadcrumb');
+  if (breadcrumb) {
+    breadcrumb.textContent = progress ? 'Workspace / Progress review' : 'Workspace / Hands-free interview';
   }
 }
-async function loadProgress() {
-  const list = $('progress-list'); list.replaceChildren(); $('progress-detail').hidden = true;
-  if (!state.authRequired || !state.accessToken) {
-    $('progress-status').textContent = state.authRequired ? 'Sign in to see your saved interviews.' : 'Account history is available when authentication is enabled by the server operator.';
+
+function appendText(parent, tag, value, className) {
+  const element = document.createElement(tag);
+  element.textContent = value;
+  if (className) element.className = className;
+  parent.appendChild(element);
+  return element;
+}
+
+function setOrbStatus(statusText, stateClass) {
+  const orb = $('orb');
+  const caption = $('orb-caption');
+  if (!orb || !caption) return;
+
+  orb.className = 'orb';
+  if (stateClass) orb.classList.add(stateClass);
+  caption.textContent = statusText;
+}
+
+function setQuestion(question, number, kind = 'core', reason = '') {
+  updateStepper(1);
+  state.question = question;
+  state.nextQuestion = null;
+
+  if ($('question-text')) $('question-text').textContent = question;
+  if ($('question-count')) $('question-count').textContent = `QUESTION ${String(number).padStart(2, '0')} / 03`;
+
+  const tracks = { agentic: 'AGENTIC AI', ai: 'MACHINE LEARNING', software: 'SOFTWARE ENGINEERING' };
+  if ($('question-track')) {
+    $('question-track').textContent = kind === 'adaptive' ? `ADAPTIVE FOLLOW-UP · ${tracks[state.track] || state.track}` : (tracks[state.track] || state.track);
+  }
+  if ($('question-hint')) {
+    $('question-hint').textContent = reason || 'Speak naturally. When you finish, the coach will pause and evaluate your answer.';
+  }
+  if ($('session-pill')) {
+    $('session-pill').classList.add('active');
+    $('session-pill').innerHTML = '<span></span> In progress';
+  }
+  if ($('live-transcript')) {
+    $('live-transcript').innerHTML = '<em>Listening… your spoken answer will appear here in real time.</em>';
+  }
+  if ($('answer-counter')) $('answer-counter').textContent = '0 words';
+}
+
+// ── Hands-Free Realtime Pipeline ──────────────────────────────────────
+
+async function startHandsFreeInterview() {
+  if (state.isHandsFree) return;
+
+  const consentBox = $('audio-consent');
+  if (!consentBox || !consentBox.checked) {
+    toast('Audio consent is required. Please check the consent box to begin.');
+    consentBox?.focus();
     return;
   }
-  $('progress-status').textContent = 'Loading your saved interviews…';
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast('Microphone access requires HTTPS or localhost. Try Chrome or Firefox.');
+    return;
+  }
+
+  stopPlayback();
+  state.track = $('track').value;
+  state.language = $('language').value;
+  state.sttModel = $('stt-model') ? $('stt-model').value : 'prisma-v2.5';
+  state.isHandsFree = true;
+  busy(true);
+
+  if ($('start-btn')) $('start-btn').textContent = 'Connecting…';
+
   try {
-    const data = await (await api('/api/my/sessions')).json();
-    $('progress-status').textContent = data.sessions.length ? `${data.sessions.length} saved interview${data.sessions.length === 1 ? '' : 's'}. Select one to review its transcript and feedback.` : 'No saved interviews yet. Start a practice session in the studio.';
-    for (const session of data.sessions) {
-      const card = document.createElement('button'); card.type = 'button'; card.className = 'progress-card';
-      appendText(card, 'strong', ({ai:'Machine Learning', agentic:'Agentic AI', software:'Software Engineering'}[session.track] || session.track));
-      appendText(card, 'span', `${session.language} · ${session.answered}/3 answers · ${session.completed ? 'Completed' : 'In progress'}`);
-      appendText(card, 'span', `Average practice score: ${session.average_score ?? '—'}/100`);
-      card.addEventListener('click', () => showProgressReport(session.session_id));
-      list.appendChild(card);
+    // Unlock browser audio during the Start click, before network awaits.
+    if (!state.realtimeClient && typeof RealtimeInterviewClient !== 'undefined') {
+      state.realtimeClient = new RealtimeInterviewClient();
+      _wireRealtimeEvents(state.realtimeClient);
     }
-  } catch (error) { $('progress-status').textContent = `Could not load history: ${error.message}`; }
-}
-function setQuestion(question, number, kind = "core", reason = "") {
-  updateStepper(1);
-  clearRecording();
-  state.providerTranscript = '';
-  state.editedTranscript = '';
-  if ($('transcript-review')) $('transcript-review').hidden = true;
-  if ($('provider-transcript')) $('provider-transcript').textContent = '';
-  if ($('edited-transcript')) $('edited-transcript').value = '';
-  state.question = question; state.nextQuestion = null;
-  $('question-text').textContent = question;
-  $('question-count').textContent = `QUESTION ${String(number).padStart(2, '0')} / 03`;
-  const tracks = { agentic: 'AGENTIC AI', ai: 'MACHINE LEARNING', software: 'SOFTWARE ENGINEERING' };
-  $('question-track').textContent = kind === 'adaptive' ? `ADAPTIVE FOLLOW-UP · ${tracks[state.track]}` : tracks[state.track];
-  $('question-hint').textContent = reason || 'Take a moment to think. Then explain your approach, what you did and what happened.';
-  $('answer-input').value = ''; $('answer-input').disabled = false;
-  $('answer-counter').textContent = '0 characters';
-  $('session-pill').classList.add('active'); $('session-pill').innerHTML = '<span></span> In progress';
-  $('orb-caption').textContent = 'Your answer starts here';
-  $('orb-icon').textContent = '◉';
-  $('record-diagnostics').textContent = '';
-  $('record-diagnostics').hidden = true;
-  $('next-btn').hidden = true;
-  busy(false);
-  if (state.realtimeMode && state.live) {
-    listen();
+    state.realtimeClient.preparePlayback();
+
+    // 1. Establish persistent session in backend SQLiteStore
+    const githubRepo = $('github-repo') ? $('github-repo').value.trim() : null;
+    const resumeText = $('resume-text') ? $('resume-text').value.trim() : null;
+    const res = await api('/api/session', jsonOptions({
+      track: state.track,
+      language: state.language,
+      github_repo: githubRepo || null,
+      resume_text: resumeText || null
+    }));
+    const data = await res.json();
+    state.session = data.session_id;
+    state.answered = 0;
+    state.completed = false;
+
+    // 2. Connect WebSocket with authoritative session_id
+    await state.realtimeClient.connect({
+      track: state.track,
+      language: state.language,
+      stt_model: state.sttModel,
+      consent: true,
+      session_id: state.session,
+      token: state.accessToken || null,
+      endpointing_policy: 'adaptive',
+      github_repo: githubRepo || null,
+      resume_text: resumeText || null
+    });
+
+    // 3. Initialize AudioWorklet continuous microphone streaming
+    await state.realtimeClient.startCapture();
+
+    // 5. Update UI for active hands-free interview
+    if ($('setup-card')) $('setup-card').hidden = true;
+    if ($('end-interview-btn')) $('end-interview-btn').hidden = false;
+    if ($('feedback-panel')) $('feedback-panel').hidden = true;
+    if ($('report-summary')) $('report-summary').hidden = true;
+    if ($('report-btn')) $('report-btn').hidden = true;
+    if ($('restart-interview-btn')) $('restart-interview-btn').hidden = true;
+
+    setQuestion(data.question, 1);
+    setOrbStatus('Coach speaking question…', 'asking');
+    toast('Interview started! Listen to the question, then speak your answer naturally.', true);
+
+  } catch (err) {
+    state.isHandsFree = false;
+    if ($('setup-card')) $('setup-card').hidden = false;
+    if ($('end-interview-btn')) $('end-interview-btn').hidden = true;
+    toast(`Could not start hands-free interview: ${err.message}`);
+    if (state.realtimeClient) {
+      state.realtimeClient.disconnect();
+    }
+  } finally {
+    busy(false);
+    if ($('start-btn')) $('start-btn').innerHTML = 'Start interview <span>↗</span>';
   }
 }
-// Keep the start logic explicit: we only show the question returned by the API.
-async function startInterview() {
-  if (state.recording) return;
-  stopPlayback();
-  state.track = $('track').value; state.language = $('language').value;
-  busy(true); $('start-btn').textContent = 'Starting…';
+
+function _wireRealtimeEvents(client) {
+  client.addEventListener('turn_state', (ev) => {
+    const data = ev.detail || {};
+    const stateName = data.state || '';
+    const rawState = data.raw_state || '';
+
+    if (rawState === 'asking') {
+      setOrbStatus('Interviewer speaking…', 'asking');
+      if (data.question) {
+        setQuestion(data.question, data.question_number || (state.answered + 1));
+      }
+    } else if (rawState === 'listening') {
+      setOrbStatus('Listening… (speak naturally)', 'listening');
+      $('orb').classList.add('recording');
+    } else if (rawState === 'transcribing' || rawState === 'review') {
+      setOrbStatus('Processing answer…', 'thinking');
+      $('orb').classList.remove('recording');
+    } else if (rawState === 'feedback') {
+      setOrbStatus('Feedback evaluated', '');
+      $('orb').classList.remove('recording');
+      if (data.feedback) {
+        showFeedback(data.feedback);
+      }
+    } else if (rawState === 'completed' || stateName === 'Complete') {
+      onInterviewComplete();
+    }
+  });
+
+  client.addEventListener('transcript', (ev) => {
+    const data = ev.detail || {};
+    const text = data.text || '';
+    if (!text) return;
+
+    state.providerTranscript = text;
+    const box = $('live-transcript');
+    if (box) {
+      box.textContent = text;
+    }
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    if ($('answer-counter')) {
+      $('answer-counter').textContent = `${words} words (${text.length} chars)`;
+    }
+    if ($('answer-input')) {
+      $('answer-input').value = text;
+    }
+  });
+
+  client.addEventListener('reprompt', (ev) => {
+    const data = ev.detail || {};
+    toast(data.text || "Whenever you're ready, feel free to answer.", true);
+  });
+
+  client.addEventListener('barge_in', () => {
+    toast('Coach paused. Listening to your answer…', true);
+    setOrbStatus('Listening… (candidate speaking)', 'listening');
+  });
+
+  client.addEventListener('error', (ev) => {
+    const err = ev.detail || {};
+    toast(`Streaming error: ${err.message || 'Connection lost'}`);
+  });
+
+  client.addEventListener('disconnected', () => {
+    if (state.isHandsFree && !state.completed) {
+      toast('Streaming connection closed.');
+    }
+  });
+}
+
+async function onInterviewComplete() {
+  state.completed = true;
+  state.isHandsFree = false;
+
+  if (state.realtimeClient) {
+    state.realtimeClient.stopCapture();
+    state.realtimeClient.stopTTS();
+  }
+
+  updateStepper(2);
+  setOrbStatus('Practice interview complete!', '');
+  if ($('orb')) $('orb').classList.remove('recording');
+  if ($('session-pill')) $('session-pill').innerHTML = '<span></span> Completed';
+  if ($('end-interview-btn')) $('end-interview-btn').hidden = true;
+  if ($('report-btn')) $('report-btn').hidden = false;
+  if ($('restart-interview-btn')) $('restart-interview-btn').hidden = false;
+
   try {
-    const res = await api('/api/session', jsonOptions({ track: state.track, language: state.language }));
+    await renderReportSummary();
+    await populateCorrectionReview();
+  } catch (err) {
+    toast(`Could not load report summary: ${err.message}`);
+  }
+
+  toast('Interview complete! Review your practice report and transcripts below.', true);
+}
+
+function endInterviewEarly() {
+  if (confirm('Are you sure you want to end the interview early? Your answers so far will be saved.')) {
+    if (state.realtimeClient) {
+      state.realtimeClient.endInterview();
+    }
+    onInterviewComplete();
+  }
+}
+
+// ── Transcript Correction & Re-evaluation ─────────────────────────────
+
+async function populateCorrectionReview() {
+  const list = $('correction-answers-list');
+  if (!list || !state.session) return;
+  list.replaceChildren();
+
+  try {
+    const res = await api(`/api/report/${encodeURIComponent(state.session)}`);
     const data = await res.json();
-    state.session = data.session_id; state.answered = 0; state.completed = false;
-    showView('studio');
-    $('stat-answered').innerHTML = '0 <small>/ 3</small>'; $('stat-score').textContent = '—';
-    $('feedback-panel').hidden = true; $('coach-headline').textContent = 'Your coach is ready.';
-    $('coach-subtitle').textContent = 'Give your answer, then see evidence-based feedback.';
-    $('report-btn').hidden = true; $('report-summary').hidden = true;
-    setQuestion(data.question, 1);
-    toast('Interview started. You can type an answer or use your microphone in live mode.', true);
-  } catch (err) { toast(err.message); }
-  finally { $('start-btn').innerHTML = 'Restart interview <span>↗</span>'; busy(false); }
+    const answers = data.results || [];
+
+    if (!answers.length) {
+      appendText(list, 'p', 'No answers recorded for this session.');
+      return;
+    }
+
+    answers.forEach((ans, idx) => {
+      const container = document.createElement('div');
+      container.className = 'correction-card';
+      container.style.cssText = 'margin-bottom: 14px; padding: 10px; background: rgba(15, 23, 42, 0.6); border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);';
+
+      appendText(container, 'strong', `Question ${idx + 1}: ${ans.question}`, 'd-block');
+
+      const origText = ans.provider_transcript || ans.transcript || '';
+      const origP = document.createElement('p');
+      origP.style.cssText = 'font-size: 13px; color: #94a3b8; margin: 4px 0;';
+      appendText(origP, 'strong', 'Original transcript:');
+      origP.appendChild(document.createTextNode(` ${origText}`));
+      container.appendChild(origP);
+
+      const label = document.createElement('label');
+      label.textContent = 'Corrected text (edit and re-score):';
+      label.style.cssText = 'font-size: 12px; color: #cbd5e1; display: block; margin-top: 6px;';
+      const textarea = document.createElement('textarea');
+      textarea.rows = 2;
+      textarea.style.cssText = 'width: 100%; font-size: 13px; margin: 4px 0 8px 0; padding: 6px; border-radius: 4px;';
+      textarea.value = ans.edited_transcript || origText;
+
+      const recomputeBtn = document.createElement('button');
+      recomputeBtn.type = 'button';
+      recomputeBtn.className = 'btn btn-secondary';
+      recomputeBtn.style.cssText = 'font-size: 12px; padding: 4px 10px;';
+      recomputeBtn.textContent = '↻ Recompute score for this answer';
+
+      recomputeBtn.addEventListener('click', async () => {
+        const corrected = textarea.value.trim();
+        if (corrected.length < 3) {
+          toast('Enter at least a short answer.');
+          return;
+        }
+        try {
+          recomputeBtn.disabled = true;
+          recomputeBtn.textContent = 'Scoring…';
+          const updateRes = await api(`/api/sessions/${encodeURIComponent(state.session)}/correct`, jsonOptions({
+            question_index: idx,
+            corrected_text: corrected
+          }));
+          await updateRes.json();
+          await renderReportSummary();
+          await populateCorrectionReview();
+          toast(`Question ${idx + 1} re-evaluated successfully!`, true);
+        } catch (err) {
+          toast(`Correction failed: ${err.message}`);
+        } finally {
+          recomputeBtn.disabled = false;
+          recomputeBtn.textContent = '↻ Recompute score for this answer';
+        }
+      });
+
+      container.appendChild(label);
+      container.appendChild(textarea);
+      container.appendChild(recomputeBtn);
+      list.appendChild(container);
+    });
+  } catch (err) {
+    appendText(list, 'p', `Could not load answers: ${err.message}`);
+  }
 }
-function clearRecording() {
-  if (state.recordingUrl) URL.revokeObjectURL(state.recordingUrl);
-  state.recordingUrl = null;
-  state.recordingWav = null;
-  $('preview-btn').disabled = true;
-  $('save-record-btn').disabled = true;
+
+// ── Feedback & Report Rendering ───────────────────────────────────────
+
+function buildItems(list, destination) {
+  destination.replaceChildren();
+  for (const item of list) {
+    const li = document.createElement('li');
+    li.textContent = item;
+    destination.appendChild(li);
+  }
 }
-function previewRecording() {
-  if (!state.recordingUrl) return;
-  stopPlayback();
-  state.audio = new Audio(state.recordingUrl);
-  state.audio.play().catch(() => toast('Playback blocked by your browser. Try downloading the WAV.'));
+
+function showFeedback(feedback) {
+  if (!$('feedback-panel')) return;
+  $('feedback-panel').hidden = false;
+  $('coach-headline').textContent = 'Here is how you did.';
+  $('coach-subtitle').textContent = 'Uncalibrated practice guidance based on transcript signals.';
+  $('score-value').textContent = String(feedback.score);
+  $('score-dial-label').textContent = String(feedback.score);
+  $('score-dial').style.background = `conic-gradient(#7668e8 ${feedback.score}%, #eeeefe 0)`;
+
+  const maxes = feedback.dimension_max || { relevance: 25, technical_coverage: 35, clarity: 20, evidence: 20 };
+  const labels = {
+    relevance: 'Relevance',
+    technical_coverage: 'Concept coverage',
+    clarity: 'Explanation clarity',
+    evidence: 'Supporting detail'
+  };
+
+  $('rubric').replaceChildren();
+  for (const [name, maximum] of Object.entries(maxes)) {
+    const value = feedback.dimensions?.[name] || 0;
+    const row = document.createElement('div');
+    row.className = 'rubric-row';
+    const label = document.createElement('span');
+    label.className = 'rubric-name';
+    label.textContent = labels[name] || name;
+    const bar = document.createElement('div');
+    bar.className = 'rubric-bar';
+    const fill = document.createElement('div');
+    fill.style.width = `${Math.min(100, (value / maximum) * 100)}%`;
+    bar.appendChild(fill);
+    const score = document.createElement('span');
+    score.className = 'rubric-score';
+    score.textContent = `${value}/${maximum}`;
+    row.append(label, bar, score);
+    $('rubric').append(row);
+  }
+
+  buildItems(feedback.strengths || [], $('strengths'));
+  buildItems(feedback.improvements || [], $('improvements'));
+  buildItems((feedback.risk_flags || []).map((f) => `${f.code}: ${f.explanation}`), $('risk-list'));
+  $('risk-block').hidden = !(feedback.risk_flags || []).length;
+
+  $('evidence-list').replaceChildren();
+  for (const item of feedback.evidence_items || []) {
+    const li = document.createElement('li');
+    li.className = 'evidence-entry';
+    const quote = document.createElement('blockquote');
+    quote.textContent = `“${item.quote}”`;
+    const reason = document.createElement('small');
+    reason.textContent = item.observation;
+    li.append(quote, reason);
+    $('evidence-list').appendChild(li);
+  }
+  $('evidence-block').hidden = !(feedback.evidence_items || []).length;
+
+  $('coverage-list').replaceChildren();
+  for (const item of feedback.coverage || []) {
+    const li = document.createElement('li');
+    li.textContent = `${item.mentioned ? '✓ Mentioned' : '○ Not detected'}: ${item.concept}`;
+    $('coverage-list').appendChild(li);
+  }
+
+  $('followup-text').textContent = feedback.follow_up || '';
+  $('score-disclaimer').textContent = feedback.disclaimer || 'Uncalibrated practice guidance. Scores are heuristic indicators, not hiring assessments.';
+  $('coach-method').textContent = 'Coach: uncalibrated practice guidance';
 }
-function downloadRecording() {
-  if (!state.recordingUrl) return;
-  const a = document.createElement('a');
-  a.href = state.recordingUrl;
-  a.download = `interviewmirror-${state.language}-${new Date().toISOString().replace(/[:.]/g,'-')}.wav`;
-  document.body.appendChild(a); a.click(); a.remove();
+
+async function renderReportSummary() {
+  if (!state.session) return;
+  const res = await api(`/api/report/${encodeURIComponent(state.session)}`);
+  const report = await res.json();
+
+  $('report-summary').hidden = false;
+  $('summary-score').textContent = `${report.average_score ?? '—'}/100`;
+  $('stat-score').textContent = `${report.average_score ?? '—'}/100`;
+  $('stat-answered').innerHTML = `${report.answered} <small>/ ${report.total_questions}</small>`;
+
+  $('summary-metrics').replaceChildren();
+  for (const [key, cap] of Object.entries(report.dimension_max || {})) {
+    const mean = report.dimension_averages?.[key] ?? 0;
+    const label = { relevance: 'Relevance', technical_coverage: 'Concept coverage', clarity: 'Clarity', evidence: 'Evidence' }[key] || key;
+    const row = document.createElement('div');
+    row.className = 'summary-metric';
+    const top = document.createElement('div');
+    top.className = 'summary-metric-label';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const value = document.createElement('strong');
+    value.textContent = `${mean}/${cap}`;
+    top.append(name, value);
+    const track = document.createElement('div');
+    track.className = 'summary-bar';
+    const fill = document.createElement('div');
+    fill.style.width = `${Math.max(0, Math.min(100, (100 * mean) / cap))}%`;
+    track.appendChild(fill);
+    row.append(top, track);
+    $('summary-metrics').appendChild(row);
+  }
+
+  buildItems(
+    report.review_priorities?.length ? report.review_priorities : ['All core concepts covered! Practice explaining design trade-offs and metrics.'],
+    $('report-priorities')
+  );
+
+  // Render candidate profile & evaluated achievements if present
+  const profileCard = $('report-candidate-profile');
+  const profileContent = $('report-profile-content');
+  if (profileCard && profileContent) {
+    const prof = report.candidate_profile || {};
+    const achs = report.achievements_evaluated || prof.achievements || [];
+    const repo = report.github_repository_evaluated || prof.github_project || '';
+    const edu = prof.education || [];
+    const skills = prof.skills || [];
+
+    if (achs.length || repo || edu.length || skills.length) {
+      profileCard.hidden = false;
+      profileContent.replaceChildren();
+
+      if (repo) {
+        const p = document.createElement('p');
+        p.style.margin = '4px 0';
+        appendText(p, 'strong', 'Tailored GitHub Project:');
+        appendText(p, 'code', repo);
+        profileContent.appendChild(p);
+      }
+      if (edu.length) {
+        const p = document.createElement('p');
+        p.style.margin = '4px 0';
+        appendText(p, 'strong', 'Background & Education:');
+        p.appendChild(document.createTextNode(` ${edu.join(' · ')}`));
+        profileContent.appendChild(p);
+      }
+      if (skills.length) {
+        const p = document.createElement('p');
+        p.style.margin = '4px 0';
+        appendText(p, 'strong', 'Demonstrated Skills:');
+        p.appendChild(document.createTextNode(` ${skills.slice(0, 8).join(', ')}`));
+        profileContent.appendChild(p);
+      }
+      if (achs.length) {
+        const div = document.createElement('div');
+        div.style.marginTop = '6px';
+        div.innerHTML = `<strong>Evaluated Achievements &amp; Milestones:</strong>`;
+        const ul = document.createElement('ul');
+        ul.style.paddingLeft = '18px';
+        ul.style.margin = '4px 0';
+        achs.forEach(a => {
+          const li = document.createElement('li');
+          li.textContent = a;
+          ul.appendChild(li);
+        });
+        div.appendChild(ul);
+        profileContent.appendChild(div);
+      }
+    } else {
+      profileCard.hidden = true;
+    }
+  }
 }
+
+async function downloadReport() {
+  if (!state.session) return;
+  try {
+    const res = await api(`/api/report/${encodeURIComponent(state.session)}`);
+    const data = await res.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `interviewmirror-report-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch (err) {
+    toast(`Cannot download report: ${err.message}`);
+  }
+}
+
+// ── REST Diagnostic & Fallback Operations ─────────────────────────────
+
 function stopPlayback() {
   if (state.audio) { state.audio.pause(); state.audio = null; }
   if (state.objectUrl) { URL.revokeObjectURL(state.objectUrl); state.objectUrl = null; }
   if (state.realtimeClient) { state.realtimeClient.stopTTS(); }
 }
-async function listen() {
-  if (!state.live || !state.question || state.busy || state.recording) return;
-  stopPlayback(); busy(true); $('listen-btn').textContent = 'Generating voice…';
+
+async function listenRest() {
+  if (!state.live || !state.question || state.busy) return;
+  stopPlayback();
+  busy(true);
+  $('listen-btn').textContent = 'Generating…';
   try {
     const res = await api('/api/speak', jsonOptions({ text: state.question, language: state.language }));
     const blob = await res.blob();
     state.objectUrl = URL.createObjectURL(blob);
     state.audio = new Audio(state.objectUrl);
     await state.audio.play();
-  } catch (err) { toast(err.message); }
-  finally { $('listen-btn').textContent = '▷ Listen to question'; busy(false); }
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    $('listen-btn').textContent = '▷ Listen (REST)';
+    busy(false);
+  }
 }
+
+async function submitRestAnswer() {
+  if (!state.session || !state.question || state.busy) return;
+  const text = $('answer-input').value.trim();
+  if (text.length < 3) {
+    toast('Write at least a short answer.');
+    return;
+  }
+  busy(true);
+  $('submit-btn').textContent = 'Evaluating…';
+  try {
+    const res = await api('/api/answer', jsonOptions({ session_id: state.session, text }));
+    const data = await res.json();
+    state.answered = data.answered;
+    state.completed = data.completed;
+    state.nextQuestion = data.next_question;
+    state.nextKind = data.next_question_kind || 'core';
+    state.nextReason = data.next_question_reason || '';
+    state.question = null;
+
+    showFeedback(data.feedback);
+    $('stat-answered').innerHTML = `${data.answered} <small>/ 3</small>`;
+    $('stat-score').textContent = `${data.average_score}/100`;
+
+    if (data.completed) {
+      onInterviewComplete();
+    } else {
+      setQuestion(state.nextQuestion, state.answered + 1, state.nextKind, state.nextReason);
+      toast('Feedback ready. Proceed to next question.', true);
+    }
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    $('submit-btn').innerHTML = 'Submit via REST <span>↗</span>';
+    busy(false);
+  }
+}
+
 function writeWav(samples, rate = 16000) {
   const bytes = new ArrayBuffer(44 + samples.length * 2), view = new DataView(bytes);
   const put = (at, str) => [...str].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)));
@@ -205,6 +692,7 @@ function writeWav(samples, rate = 16000) {
   samples.forEach((n, i) => { const s = Math.max(-1, Math.min(1, n)); view.setInt16(44 + i * 2, s < 0 ? s * 32768 : s * 32767, true); });
   return new Blob([bytes], { type: 'audio/wav' });
 }
+
 async function convertToWav(blob) {
   const context = new (window.AudioContext || window.webkitAudioContext)();
   try {
@@ -224,429 +712,182 @@ async function convertToWav(blob) {
     return writeWav(sampled);
   } finally { await context.close(); }
 }
-function getOrCreateRealtimeClient() {
-  if (!state.realtimeClient && typeof RealtimeInterviewClient !== 'undefined') {
-    state.realtimeClient = new RealtimeInterviewClient();
-    state.realtimeClient.addEventListener('transcript', (ev) => {
-      const data = ev.detail || {};
-      const text = data.text || '';
-      state.providerTranscript = text;
-      state.editedTranscript = text;
-      if ($('provider-transcript')) $('provider-transcript').textContent = text;
-      if ($('edited-transcript')) $('edited-transcript').value = text;
-      if ($('transcript-review')) $('transcript-review').hidden = false;
-      $('answer-input').value = text;
-      $('answer-counter').textContent = `${text.length} characters`;
-      if (data.is_final) {
-        $('orb-caption').textContent = 'Transcript ready. Review or edit before submitting.';
-        if (state.recording) stopRealtimeRecording(false);
-      } else {
-        $('orb-caption').textContent = 'Transcribing live audio…';
-      }
-    });
 
-    state.realtimeClient.addEventListener('error', (ev) => {
-      const err = ev.detail || {};
-      toast(err.message || 'Realtime streaming error');
-    });
-
-    state.realtimeClient.addEventListener('disconnected', () => {
-      if (state.recording && state.realtimeMode) {
-        stopRealtimeRecording();
-      }
-    });
-
-    state.realtimeClient.addEventListener('turn_state', (ev) => {
-      const turn = ev.detail || {};
-      if (turn.state === 'asking') {
-        $('orb-caption').textContent = 'Coach is asking a question…';
-      } else if (turn.state === 'listening') {
-        $('orb-caption').textContent = 'Coach is listening… speak your answer.';
-      }
-    });
-  }
-  return state.realtimeClient;
+function clearRecording() {
+  if (state.recordingUrl) URL.revokeObjectURL(state.recordingUrl);
+  state.recordingUrl = null;
+  state.recordingWav = null;
+  if ($('preview-btn')) $('preview-btn').disabled = true;
+  if ($('save-record-btn')) $('save-record-btn').disabled = true;
 }
 
-async function startRealtimeRecording() {
-  if (!state.question || state.busy) return;
-  if (!navigator.mediaDevices) {
-    toast('Microphone access requires a recent browser and localhost or HTTPS.');
+function previewRecording() {
+  if (!state.recordingUrl) return;
+  stopPlayback();
+  state.audio = new Audio(state.recordingUrl);
+  state.audio.play().catch(() => toast('Playback blocked by your browser. Try downloading the WAV.'));
+}
+
+function downloadRecording() {
+  if (!state.recordingUrl) return;
+  const a = document.createElement('a');
+  a.href = state.recordingUrl;
+  a.download = `interviewmirror-${state.language}-${new Date().toISOString().replace(/[:.]/g,'-')}.wav`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+async function toggleRestRecording() {
+  if (state.recording) {
+    if (state.mediaRecorder?.state === 'recording') state.mediaRecorder.stop();
     return;
   }
-  if (!$('audio-consent').checked) {
-    $('orb-caption').textContent = 'Consent required for streaming. Check consent or use REST mode.';
-    toast('Gnani transcription skipped. Check audio consent if you wish to send the recording.');
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    toast('Microphone recording requires a recent browser and localhost or HTTPS.');
     return;
   }
   stopPlayback();
   clearRecording();
   try {
-    busy(true);
-    const client = getOrCreateRealtimeClient();
-    if (!client.connected) {
-      await client.connect({
-        track: state.track,
-        language: state.language,
-        stt_model: $('stt-model').value,
-        consent: $('audio-consent').checked
-      });
-    }
-    await client.startCapture();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } });
+    state.stream = stream;
+    state.chunks = [];
+    const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m));
+    state.mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    state.mediaRecorder.ondataavailable = (e) => { if (e.data.size) state.chunks.push(e.data); };
+    state.mediaRecorder.onerror = () => toast('The browser could not record audio.');
+    state.mediaRecorder.onstop = async () => {
+      clearInterval(state.ticker);
+      state.recording = false;
+      state.stream?.getTracks().forEach(t => t.stop());
+      state.stream = null;
+      if ($('record-btn')) {
+        $('record-btn').classList.remove('recording');
+        $('record-btn').innerHTML = '● Record (REST) <span id="record-counter">00:00</span>';
+      }
+      busy(true);
+      try {
+        if (!state.chunks.length) throw new Error('No audio captured.');
+        const wav = await convertToWav(new Blob(state.chunks, { type: state.mediaRecorder.mimeType }));
+        state.recordingWav = wav;
+        state.recordingUrl = URL.createObjectURL(wav);
+        if ($('preview-btn')) $('preview-btn').disabled = false;
+        if ($('save-record-btn')) $('save-record-btn').disabled = false;
+
+        const check = new FormData();
+        check.append('audio', wav, 'candidate.wav');
+        const checkResponse = await api('/api/audio/check', { method: 'POST', body: check });
+        const result = await checkResponse.json();
+        const diagEl = $('record-diagnostics');
+        if (diagEl) {
+          diagEl.hidden = false;
+          diagEl.textContent = `Local audio check: ${result.duration_seconds}s · 16 kHz mono WAV · ${result.message}`;
+        }
+        if (result.possibly_silent) {
+          toast('Microphone test detected very low input. Play it back before attempting transcription.');
+        } else if (!state.live) {
+          toast('Recording validated locally. No Gnani key: type the transcript for feedback.', true);
+        } else {
+          toast('Audio preflight check passed. Ready for REST or streaming.', true);
+        }
+      } catch (err) {
+        toast(err.message);
+      } finally {
+        busy(false);
+      }
+    };
+    state.mediaRecorder.start(250);
     state.recording = true;
     state.startedAt = Date.now();
-    $('orb').classList.add('recording');
-    $('record-btn').classList.add('recording');
-    $('orb-caption').textContent = 'Recording (realtime streaming)… speak naturally';
-    $('record-btn').innerHTML = '■ Stop recording <span id="record-counter">00:00</span>';
-    busy(false);
+    if ($('record-btn')) {
+      $('record-btn').classList.add('recording');
+      $('record-btn').innerHTML = '■ Stop recording <span id="record-counter">00:00</span>';
+    }
     const tick = () => {
       const elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
-      $('record-counter').textContent = `00:${String(elapsed).padStart(2, '0')}`;
-      if (elapsed >= 28 && state.recording) stopRealtimeRecording();
+      if ($('record-counter')) $('record-counter').textContent = `00:${String(elapsed).padStart(2, '0')}`;
+      if (elapsed >= 28 && state.mediaRecorder?.state === 'recording') state.mediaRecorder.stop();
     };
     tick();
     state.ticker = setInterval(tick, 300);
   } catch (err) {
     state.recording = false;
-    busy(false);
-    toast(`Streaming capture failed: ${err.message}`);
+    toast(`Microphone unavailable: ${err.message}`);
   }
 }
 
-async function stopRealtimeRecording(commit = true) {
-  clearInterval(state.ticker);
-  state.recording = false;
-  $('orb').classList.remove('recording');
-  $('record-btn').classList.remove('recording');
-  $('record-btn').innerHTML = '● Record answer <span id="record-counter">00:00</span>';
-  $('orb-caption').textContent = 'Streaming stopped. Review your transcript before submitting.';
-  if (state.realtimeClient) {
-    await state.realtimeClient.stopCapture({ commit });
-  }
-  busy(false);
-}
+// ── Initialization & Navigation ───────────────────────────────────────
 
-async function toggleRecording() {
-  if (state.recording) {
-    if (state.realtimeMode) {
-      await stopRealtimeRecording();
-      return;
-    }
-    if (state.mediaRecorder?.state === 'recording') state.mediaRecorder.stop();
-    return;
-  }
-  if (!state.question || state.busy) return;
-  if (state.realtimeMode) {
-    await startRealtimeRecording();
-    return;
-  }
-  if (!navigator.mediaDevices || !window.MediaRecorder) { toast('Microphone recording requires a recent browser and localhost or HTTPS.'); return; }
-  stopPlayback(); clearRecording();
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } });
-    state.stream = stream; state.chunks = [];
-    const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m));
-    state.mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-    state.mediaRecorder.ondataavailable = (e) => { if (e.data.size) state.chunks.push(e.data); };
-    state.mediaRecorder.onerror = () => toast('The browser could not record audio. Try typing your answer.');
-    state.mediaRecorder.onstop = async () => {
-      clearInterval(state.ticker); state.recording = false;
-      state.stream?.getTracks().forEach(t => t.stop()); state.stream = null;
-      $('orb').classList.remove('recording'); $('record-btn').classList.remove('recording');
-      $('orb-caption').textContent = 'Checking the recorded audio locally…';
-      $('record-btn').innerHTML = '● Record answer <span id="record-counter">00:00</span>';
-      busy(true);
-      try {
-        if (!state.chunks.length) throw new Error('The browser captured no audio. Check microphone permission and retry.');
-        const wav = await convertToWav(new Blob(state.chunks, { type: state.mediaRecorder.mimeType }));
-        if (wav.size > 4_000_000) throw new Error('Audio too large. Record a shorter answer.');
-        state.recordingWav = wav;
-        state.recordingUrl = URL.createObjectURL(wav);
-        const check = new FormData(); check.append('audio', wav, 'candidate.wav');
-        const checkResponse = await api('/api/audio/check', { method: 'POST', body: check });
-        const result = await checkResponse.json();
-        $('record-diagnostics').hidden = false;
-        $('record-diagnostics').textContent = `Local audio check: ${result.duration_seconds}s · 16 kHz mono WAV · ${result.message}`;
-        if (result.possibly_silent) {
-          $('orb-caption').textContent = 'The recording is very quiet. Play it and check your microphone.';
-          toast('Microphone test detected very low input. Play it back before attempting transcription.');
-        } else if (state.live && !$('audio-consent').checked) {
-          $('orb-caption').textContent = 'Recording saved locally. Consent required for provider transcription; type your answer instead.';
-          toast('Gnani transcription skipped. Check audio consent if you wish to send the recording.');
-        } else if (state.live) {
-          $('orb-caption').textContent = 'Audio checked. Requesting Gnani Prisma transcription…';
-          const form = new FormData(); form.append('audio', wav, 'candidate.wav'); form.append('language', $('stt-model').value === 'prisma-v3.0' ? 'indic-auto' : state.language); form.append('stt_model', $('stt-model').value); form.append('track', state.track); form.append('enhancement', $('noise-policy').value); form.append('consent', 'true');
-          const transcriptResponse = await api('/api/transcribe', { method: 'POST', body: form });
-          const data = await transcriptResponse.json();
-          $('answer-input').value = data.transcript;
-          $('answer-counter').textContent = `${data.transcript.length} characters`;
-          state.providerTranscript = data.transcript;
-          state.editedTranscript = data.transcript;
-          if ($('provider-transcript')) $('provider-transcript').textContent = data.transcript;
-          if ($('edited-transcript')) $('edited-transcript').value = data.transcript;
-          if ($('transcript-review')) $('transcript-review').hidden = false;
-          const detected = data.detected_language_code ? ` · detected ${data.detected_language_code}` : '';
-          $('orb-caption').textContent = `${data.model || $('stt-model').value} transcript ready${detected}. Review before submitting.`;
-          toast('Transcribed with Gnani Prisma. Review the text before submitting.', true);
-        } else {
-          $('orb-caption').textContent = 'Microphone test passed. Play the audio, then type your answer.';
-          toast('Recording validated locally. No Gnani key: type the transcript for feedback.', true);
-        }
-      } catch (err) {
-        $('orb-caption').textContent = 'Audio check or transcription failed. You can replay or type your answer.';
-        toast(err.message);
-      }
-      finally { busy(false); }
-    };
-    state.mediaRecorder.start(250); state.recording = true; state.startedAt = Date.now();
-    $('orb').classList.add('recording'); $('record-btn').classList.add('recording');
-    $('orb-caption').textContent = 'Recording… speak naturally (max 28 seconds)';
-    $('record-btn').innerHTML = '■ Stop recording <span id="record-counter">00:00</span>';
-    busy(false);
-    const tick = () => {
-      const elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
-      $('record-counter').textContent = `00:${String(elapsed).padStart(2, '0')}`;
-      if (elapsed >= 28 && state.mediaRecorder?.state === 'recording') state.mediaRecorder.stop();
-    };
-    tick(); state.ticker = setInterval(tick, 300);
-  } catch (err) { stream?.getTracks().forEach(t => t.stop()); state.recording = false; toast(`Microphone unavailable: ${err.message}`); busy(false); }
-}
-function buildItems(list, destination) {
-  destination.replaceChildren();
-  for (const item of list) { const li = document.createElement('li'); li.textContent = item; destination.appendChild(li); }
-}
-function showFeedback(feedback) {
-  $('feedback-panel').hidden = false;
-  $('coach-headline').textContent = 'Here is how you did.';
-  $('coach-subtitle').textContent = 'Evidence-linked practice feedback from your submitted transcript.';
-  $('score-value').textContent = String(feedback.score);
-  $('score-dial-label').textContent = String(feedback.score);
-  $('score-dial').style.background = `conic-gradient(#7668e8 ${feedback.score}%, #eeeefe 0)`;
-  const maxes = feedback.dimension_max || { relevance: 25, technical_coverage: 35, clarity: 20, evidence: 20 };
-  const labels = { relevance: 'Relevance', technical_coverage: 'Concept coverage', clarity: 'Explanation clarity', evidence: 'Supporting detail' };
-  $('rubric').replaceChildren();
-  for (const [name, maximum] of Object.entries(maxes)) {
-    const value = feedback.dimensions[name] || 0;
-    const row = document.createElement('div'); row.className = 'rubric-row';
-    const label = document.createElement('span'); label.className = 'rubric-name'; label.textContent = labels[name] || name;
-    const bar = document.createElement('div'); bar.className = 'rubric-bar';
-    const fill = document.createElement('div'); fill.style.width = `${Math.min(100, value / maximum * 100)}%`; bar.appendChild(fill);
-    const score = document.createElement('span'); score.className = 'rubric-score'; score.textContent = `${value}/${maximum}`;
-    row.append(label, bar, score); $('rubric').append(row);
-  }
-  buildItems(feedback.strengths, $('strengths')); buildItems(feedback.improvements, $('improvements'));
-  buildItems((feedback.risk_flags || []).map(flag => `${flag.code}: ${flag.explanation}`), $('risk-list'));
-  $('risk-block').hidden = !(feedback.risk_flags || []).length;
-  $('evidence-list').replaceChildren();
-  for (const item of feedback.evidence_items || []) {
-    const li = document.createElement('li'); li.className = 'evidence-entry';
-    const quote = document.createElement('blockquote'); quote.textContent = `“${item.quote}”`;
-    const reason = document.createElement('small'); reason.textContent = item.observation;
-    li.append(quote, reason); $('evidence-list').appendChild(li);
-  }
-  $('evidence-block').hidden = !(feedback.evidence_items || []).length;
-  $('coverage-list').replaceChildren();
-  for (const item of feedback.coverage || []) {
-    const li = document.createElement('li');
-    li.textContent = `${item.mentioned ? '✓ Mentioned' : '○ Not detected'}: ${item.concept}`;
-    $('coverage-list').appendChild(li);
-  }
-  $('followup-text').textContent = feedback.follow_up;
-  $('score-disclaimer').textContent = feedback.disclaimer;
-  $('coach-method').textContent = 'Coach: uncalibrated text-based practice rubric';
-}
-
-async function renderReportSummary() {
-  const res = await api(`/api/report/${encodeURIComponent(state.session)}`);
-  const report = await res.json();
-  $('report-summary').hidden = false;
-  $('summary-score').textContent = `${report.average_score ?? '—'}/100`;
-  $('summary-metrics').replaceChildren();
-  for (const [key, cap] of Object.entries(report.dimension_max || {})) {
-    const mean = report.dimension_averages?.[key] ?? 0;
-    const label = {relevance: 'Relevance', technical_coverage: 'Concept coverage', clarity: 'Clarity', evidence: 'Evidence'}[key] || key;
-    const row = document.createElement('div'); row.className = 'summary-metric';
-    const top = document.createElement('div'); top.className = 'summary-metric-label';
-    const name = document.createElement('span'); name.textContent = label;
-    const value = document.createElement('strong'); value.textContent = `${mean}/${cap}`;
-    top.append(name, value);
-    const track = document.createElement('div'); track.className = 'summary-bar';
-    const fill = document.createElement('div'); fill.style.width = `${Math.max(0, Math.min(100, 100 * mean / cap))}%`;
-    track.appendChild(fill); row.append(top, track); $('summary-metrics').appendChild(row);
-  }
-  buildItems(report.review_priorities?.length ? report.review_priorities : ['No obvious missing concepts flagged. Practice explaining trade-offs and results.'], $('report-priorities'));
-}
-
-async function submitAnswer() {
-  if (!state.session || !state.question || state.busy || state.recording) return;
-  const text = $('answer-input').value.trim();
-  if (text.length < 3) { toast('Write at least a short answer before requesting feedback.'); return; }
-  busy(true); $('submit-btn').textContent = 'Evaluating…';
-  try {
-    const payload = {
-      session_id: state.session,
-      text,
-      provider_transcript: state.providerTranscript || text,
-      edited_transcript: state.editedTranscript || text
-    };
-    const res = await api('/api/answer', jsonOptions(payload));
-    const data = await res.json();
-    state.answered = data.answered; state.completed = data.completed; state.nextQuestion = data.next_question;
-    state.nextKind = data.next_question_kind || 'core'; state.nextReason = data.next_question_reason || '';
-    state.question = null;
-    updateStepper(2);
-    showFeedback(data.feedback);
-    if (state.realtimeClient) {
-      state.realtimeClient.disconnect();
-      state.realtimeClient = null;
-    }
-    $('stat-answered').innerHTML = `${data.answered} <small>/ 3</small>`;
-    $('stat-score').textContent = `${data.average_score}/100`;
-    $('answer-input').disabled = true;
-    $('record-guidance').textContent = 'Answer saved locally for this session. Audio is not stored by the backend; save your WAV before moving to the next question if needed.';
-    $('orb-caption').textContent = data.completed ? 'Practice complete — great work!' : 'Ready for the next question';
-    $('next-btn').hidden = data.completed; $('report-btn').hidden = !data.completed; $('delete-session-btn').hidden = !data.completed;
-    if (data.completed) {
-      $('session-pill').innerHTML = '<span></span> Completed';
-      $('question-hint').textContent = 'Three answers complete. Download your review to track your progress.';
-      try { await renderReportSummary(); } catch (err) { toast('Interview complete, but the summary could not load: ' + err.message); }
-      toast('Session complete! Your report is ready.', true);
-    } else {
-      toast('Feedback ready. Review it, then continue.', true);
-    }
-  } catch (err) { toast(err.message); }
-  finally { $('submit-btn').innerHTML = 'Get feedback <span>↗</span>'; busy(false); }
-}
-function nextQuestion() { if (state.nextQuestion) setQuestion(state.nextQuestion, state.answered + 1, state.nextKind, state.nextReason); }
-async function downloadReport() {
-  if (!state.session) return;
-  try {
-    const res = await api(`/api/report/${encodeURIComponent(state.session)}`);
-    const data = await res.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob); const a = document.createElement('a');
-    a.href = url; a.download = `interviewmirror-report-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  } catch (err) { toast(err.message); }
-}
-async function signIn(action) {
-  const email = $('auth-email').value.trim(), password = $('auth-password').value;
-  if (!email || password.length < 12) { toast('Enter your email and password (at least 12 characters).'); return; }
-  try {
-    const response = await api(`/api/auth/${action}`, jsonOptions({email, password}));
-    const result = await response.json();
-    state.accessToken = result.access_token;
-    $('auth-password').value = '';
-    $('auth-fields').hidden = true; $('auth-signed-in').hidden = false;
-    $('auth-status-text').textContent = `Signed in as ${email}. Sessions are saved on the server.`;
-    busy(false); toast('Signed in. You can start or resume an interview.', true);
-    if (!$('progress-view').hidden) await loadProgress();
-  } catch (error) { toast(error.message); }
-}
-async function restoreSession() {
-  try {
-    const res = await api('/api/my/sessions'); const history = await res.json();
-    if (!history.sessions?.length) { toast('No saved sessions to resume.'); return; }
-    const latest = history.sessions[0];
-    const info = await (await api(`/api/sessions/${encodeURIComponent(latest.session_id)}`)).json();
-    state.session = latest.session_id; state.track = info.track; state.language = info.language;
-    state.answered = info.answered; state.completed = info.completed;
-    $('track').value = info.track; $('language').value = info.language;
-    $('stat-answered').innerHTML = `${info.answered} <small>/ 3</small>`;
-    state.nextQuestion = null;
-    if (info.completed) {
-      state.question = null;
-      updateStepper(2);
-      $('question-text').textContent = 'Interview completed';
-      $('report-btn').hidden = false; $('delete-session-btn').hidden = false;
-      await renderReportSummary();
-      $('stat-score').textContent = $('summary-score').textContent;
-      busy(false);
-    } else {
-      setQuestion(info.current_question, info.answered + 1);
-      $('feedback-panel').hidden = true;
-    }
-    toast('Saved session restored from SQLite.', true);
-  } catch (error) { toast('Could not restore session: ' + error.message); }
-}
 async function init() {
   updateStepper(0);
+
   $('studio-nav').addEventListener('click', () => showView('studio'));
   $('progress-nav').addEventListener('click', () => { showView('progress'); loadProgress(); });
   $('progress-refresh').addEventListener('click', loadProgress);
-  $('auth-login-btn').addEventListener('click', () => signIn('login'));
-  $('auth-register-btn').addEventListener('click', () => signIn('register'));
-  $('auth-restore-btn').addEventListener('click', restoreSession);
-  $('auth-logout-btn').addEventListener('click', async () => {
-    try { await api('/api/auth/logout', {method:'POST'}); }
-    catch (error) { toast(error.message); return; }
-    state.accessToken = null; state.session = null; state.question = null;
-    $('auth-fields').hidden = false; $('auth-signed-in').hidden = true;
-    $('auth-status-text').textContent = 'Signed out. Sign in to access your saved sessions.';
-    if (!$('progress-view').hidden) loadProgress();
-    busy(false); toast('Signed out.', true);
-  });
-  $('start-btn').addEventListener('click', startInterview);
-  $('listen-btn').addEventListener('click', listen);
-  $('record-btn').addEventListener('click', toggleRecording);
-  $('preview-btn').addEventListener('click', previewRecording);
-  $('save-record-btn').addEventListener('click', downloadRecording);
-  $('submit-btn').addEventListener('click', submitAnswer);
-  $('next-btn').addEventListener('click', nextQuestion);
+
+  // Hands-free controls
+  $('start-btn').addEventListener('click', startHandsFreeInterview);
+  if ($('end-interview-btn')) $('end-interview-btn').addEventListener('click', endInterviewEarly);
+  if ($('restart-interview-btn')) $('restart-interview-btn').addEventListener('click', () => location.reload());
   $('report-btn').addEventListener('click', downloadReport);
-  $('delete-session-btn').addEventListener('click', async () => {
-    if (!state.session) return;
-    try { await api(`/api/session/${encodeURIComponent(state.session)}`, {method: 'DELETE'}); location.reload(); }
-    catch (err) { toast('Cannot delete session: ' + err.message); }
-  });
-  const rtToggle = $('realtime-toggle');
-  if (rtToggle) {
-    rtToggle.checked = state.realtimeMode;
-    rtToggle.addEventListener('change', (e) => {
-      state.realtimeMode = !!e.target.checked;
-      toast(`Realtime streaming mode ${state.realtimeMode ? 'enabled' : 'disabled'}.`, true);
-    });
-  }
-  const editedInput = $('edited-transcript');
-  if (editedInput) {
-    editedInput.addEventListener('input', () => {
-      state.editedTranscript = editedInput.value;
-      $('answer-input').value = editedInput.value;
-      $('answer-counter').textContent = `${editedInput.value.length} characters`;
-    });
-  }
-  $('answer-input').addEventListener('input', () => {
-    $('answer-counter').textContent = `${$('answer-input').value.length} characters`;
-    state.editedTranscript = $('answer-input').value;
-    if ($('edited-transcript')) $('edited-transcript').value = $('answer-input').value;
-  });
+
+  // REST fallback controls
+  $('listen-btn').addEventListener('click', listenRest);
+  $('submit-btn').addEventListener('click', submitRestAnswer);
   $('example-btn').addEventListener('click', () => {
     $('answer-input').value = SAMPLE[state.track];
-    state.editedTranscript = SAMPLE[state.track];
-    if ($('edited-transcript')) $('edited-transcript').value = SAMPLE[state.track];
-    $('answer-counter').textContent = `${$('answer-input').value.length} characters`;
-    toast('Synthetic example inserted; replace it with your own answer for real practice.');
+    toast('Synthetic answer inserted.');
   });
+  if ($('record-btn')) $('record-btn').addEventListener('click', toggleRestRecording);
+  if ($('preview-btn')) $('preview-btn').addEventListener('click', previewRecording);
+  if ($('save-record-btn')) $('save-record-btn').addEventListener('click', downloadRecording);
+
+  // Consent checkbox controls start button state
+  const consentBox = $('audio-consent');
+  if (consentBox) {
+    consentBox.addEventListener('change', () => {
+      $('start-btn').disabled = !consentBox.checked;
+    });
+    $('start-btn').disabled = !consentBox.checked;
+  }
+
+  // Load status
   try {
-    const res = await api('/api/status'), data = await res.json(); state.live = data.gnani_live;
+    const res = await api('/api/status');
+    const data = await res.json();
+    state.live = data.gnani_live;
     state.authRequired = !!data.auth_required;
     $('auth-panel').hidden = !state.authRequired;
-    busy(false);
-    const neural = $('noise-policy').querySelector('option[value=deepfilter3]');
-    if (neural && data.neural_enhancement_dependency_present) { neural.hidden = false; neural.disabled = false; }
-    $('side-status').textContent = state.live ? 'Gnani API key configured' : 'Local demo mode';
-    $('side-mode').textContent = state.live ? 'Try Prisma + Timbre with a live API call' : 'Local recording and interview practice';
+
+    $('side-status').textContent = state.live ? 'Gnani API key active' : 'Local demo mode';
+    $('side-mode').textContent = state.live ? 'Prisma STT + Timbre TTS streaming' : 'Local practice with diagnostic feedback';
     $('side-dot').classList.toggle('live', state.live);
+
     $('mode-banner').classList.toggle('live', state.live);
-    $('mode-heading').textContent = state.live ? 'Voice API key configured — test a live call' : 'Local practice · microphone test available';
-    $('mode-description').textContent = state.live ? 'Your key is loaded, but access is not yet verified. Record a short answer or listen to a question to test the live provider. Calls use Gnani credits.' : 'Record and replay a short answer locally without credits; type its transcript for feedback. Add your GNANI_API_KEY in .env to enable real Gnani STT and TTS.';
-    $('mode-tag').textContent = state.live ? 'KEY LOADED (UNVERIFIED)' : 'NO API KEY';
-    $('record-guidance').textContent = state.live ? 'Record up to 28 seconds. Audio format is checked locally before a paid Prisma call.' : 'Record up to 28 seconds to test your microphone. Replay/save WAV; manually type your answer until Gnani is configured.';
-  } catch (err) { $('mode-heading').textContent = 'Backend is offline'; $('mode-description').textContent = err.message; }
+    $('mode-heading').textContent = state.live ? 'Voice streaming active — click Start to practice' : 'Local practice mode · microphone test available';
+    $('mode-description').textContent = state.live
+      ? 'Hands-free mode speaks questions and listens automatically using Gnani realtime streaming.'
+      : 'Connect your GNANI_API_KEY for live streaming. Practice room works with simulated speech in demo mode.';
+    $('mode-tag').textContent = state.live ? 'GNANI STREAMING' : 'DEMO MODE';
+  } catch (err) {
+    $('mode-heading').textContent = 'Backend is offline';
+    $('mode-description').textContent = err.message;
+  }
 }
+
+async function loadProgress() {
+  const list = $('progress-list');
+  list.replaceChildren();
+  $('progress-detail').hidden = true;
+  if (!state.authRequired || !state.accessToken) {
+    $('progress-status').textContent = state.authRequired ? 'Sign in to see saved interviews.' : 'Account history is available when authentication is enabled.';
+    return;
+  }
+  try {
+    const data = await (await api('/api/my/sessions')).json();
+    $('progress-status').textContent = data.sessions.length ? `${data.sessions.length} saved interviews.` : 'No saved interviews yet.';
+  } catch (err) {
+    $('progress-status').textContent = `Could not load: ${err.message}`;
+  }
+}
+
 init();
-
-

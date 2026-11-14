@@ -2,10 +2,10 @@
 
 /**
  * AudioWorklet processor: captures mic input from channel 0, accumulates in
- * a ring buffer, resamples from device sampleRate to 16000 Hz using linear
- * interpolation, packetizes into exactly 512 samples (1024 bytes) per frame
- * of signed 16-bit little-endian PCM, and posts each frame at 32ms realtime
- * cadence (no burst buffering).
+ * a ring buffer, resamples from device sampleRate to 16000 Hz using a windowed
+ * sinc FIR filter (anti-aliasing bandlimited interpolation), packetizes into
+ * exactly 512 samples (1024 bytes) per frame of signed 16-bit little-endian PCM,
+ * and posts each frame at 32ms realtime cadence (no burst buffering).
  *
  * Runs in AudioWorkletGlobalScope — no DOM access, no external imports.
  */
@@ -18,8 +18,15 @@ class PCMCaptureProcessor extends AudioWorkletProcessor {
     this._targetRate = 16000;
     this._step = this._deviceRate / this._targetRate;
 
+    // Filter configuration for anti-aliasing sinc resampling
+    // If device rate matches target rate, filter is bypassed
+    this._isNativeRate = Math.abs(this._deviceRate - this._targetRate) < 1;
+    this._filterTapsHalf = 8; // K = 8 taps on each side (total 17 taps)
+    // Lowpass cutoff: slightly below Nyquist of target rate (7.2 kHz normalized to input rate)
+    this._cutoff = (7200 / this._deviceRate);
+
     // Ring buffer for raw input samples (Float32)
-    // 65536 samples provides >1s buffer at 48kHz
+    // 65536 samples provides >1.3s buffer at 48kHz
     this._ringSize = 65536;
     this._ring = new Float32Array(this._ringSize);
     this._writePos = 0;
@@ -35,6 +42,46 @@ class PCMCaptureProcessor extends AudioWorkletProcessor {
     };
   }
 
+  /**
+   * Evaluate windowed sinc bandlimited interpolation sample at continuous time `pos`.
+   */
+  _interpolateSample(pos) {
+    if (this._isNativeRate) {
+      const idx = ((Math.round(pos) % this._ringSize) + this._ringSize) % this._ringSize;
+      return this._ring[idx];
+    }
+
+    const center = Math.round(pos);
+    const K = this._filterTapsHalf;
+    const fc = this._cutoff;
+    let sum = 0;
+    let weightSum = 0;
+
+    for (let k = -K; k <= K; k++) {
+      const n = center + k;
+      const delta = pos - n;
+      const absDelta = Math.abs(delta);
+
+      if (absDelta <= K) {
+        // Hann window
+        const w = 0.5 + 0.5 * Math.cos((Math.PI * delta) / K);
+        // Sinc: sin(2 * pi * fc * delta) / (pi * delta)
+        let sinc;
+        if (absDelta < 1e-7) {
+          sinc = 2 * fc;
+        } else {
+          sinc = Math.sin(2 * Math.PI * fc * delta) / (Math.PI * delta);
+        }
+        const weight = sinc * w;
+        const ringIdx = ((n % this._ringSize) + this._ringSize) % this._ringSize;
+        sum += this._ring[ringIdx] * weight;
+        weightSum += weight;
+      }
+    }
+
+    return weightSum > 1e-6 ? (sum / weightSum) : 0;
+  }
+
   _flush() {
     const remainingInput = this._writePos - this._readPos;
     if (remainingInput > 1) {
@@ -42,12 +89,7 @@ class PCMCaptureProcessor extends AudioWorkletProcessor {
       const count = Math.min(512, Math.floor(remainingInput / this._step));
       for (let i = 0; i < count; i++) {
         const pos = this._readPos + i * this._step;
-        const idx0 = Math.floor(pos);
-        const idx1 = idx0 + 1;
-        const frac = pos - idx0;
-        const s0 = this._ring[idx0 % this._ringSize];
-        const s1 = idx1 < this._writePos ? this._ring[idx1 % this._ringSize] : s0;
-        const sample = s0 + (s1 - s0) * frac;
+        const sample = this._interpolateSample(pos);
         const clamped = Math.max(-1, Math.min(1, sample));
         pcm[i] = clamped < 0 ? (clamped * 32768) | 0 : (clamped * 32767) | 0;
       }
@@ -73,18 +115,13 @@ class PCMCaptureProcessor extends AudioWorkletProcessor {
 
     // Packetize exactly 512 samples (1024 bytes) per frame.
     // 512 samples @ 16kHz = exactly 32ms of audio.
-    // We emit at most 1 frame per process() call to maintain 32ms realtime cadence and prevent bursting.
-    const neededInput = Math.ceil(this._readPos + (512 - 1) * this._step + 1);
+    // Maintain 32ms realtime cadence and prevent bursting.
+    const neededInput = Math.ceil(this._readPos + (512 - 1) * this._step + this._filterTapsHalf + 1);
     if (this._writePos >= neededInput) {
       const pcm = new Int16Array(512);
       for (let i = 0; i < 512; i++) {
         const pos = this._readPos + i * this._step;
-        const idx0 = Math.floor(pos);
-        const idx1 = idx0 + 1;
-        const frac = pos - idx0;
-        const s0 = this._ring[idx0 % this._ringSize];
-        const s1 = this._ring[idx1 % this._ringSize];
-        const sample = s0 + (s1 - s0) * frac;
+        const sample = this._interpolateSample(pos);
         const clamped = Math.max(-1, Math.min(1, sample));
         pcm[i] = clamped < 0 ? (clamped * 32768) | 0 : (clamped * 32767) | 0;
       }

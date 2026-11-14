@@ -1,51 +1,123 @@
 {
-  "dataset_id": "synthetic-practice-review-queue-v1",
-  "purpose": "Synthetic cases for functional smoke tests and later human review. No human ground-truth labels supplied.",
+  "dataset_id": "synthetic-practice-review-queue-v2",
+  "purpose": "Multilingual and code-mixed test cases for functional verification, rubric evaluation, and ASR accuracy manifests across English, Telugu, Hindi, and code-mixed tech interview practice.",
   "cases": [
     {
-      "id": "agentic_en_strong", "track": "agentic", "question_index": 0, "language": "en-IN",
+      "id": "agentic_en_strong",
+      "track": "agentic",
+      "question_index": 0,
+      "language": "en-IN",
       "answer": "First I built an agent workflow with a restricted file editing tool. Because generated patches can be wrong, I required human approval before editing protected files, then tested changes using 12 regression tests and recorded an audit log.",
-      "review_status": "unreviewed", "reference": null
+      "review_status": "unreviewed",
+      "reference": null
     },
     {
-      "id": "agentic_en_empty", "track": "agentic", "question_index": 0, "language": "en-IN",
+      "id": "agentic_en_empty",
+      "track": "agentic",
+      "question_index": 0,
+      "language": "en-IN",
       "answer": "I like technology and want to become a strong developer.",
-      "review_status": "unreviewed", "reference": null
+      "review_status": "unreviewed",
+      "reference": null
     },
     {
-      "id": "agentic_en_keyword_stuffing", "track": "agentic", "question_index": 0, "language": "en-IN",
+      "id": "agentic_en_keyword_stuffing",
+      "track": "agentic",
+      "question_index": 0,
+      "language": "en-IN",
       "answer": "Agent tools approval permission guardrail agent tools approval permission guardrail. I used agent tools and approval so everything is excellent, with no demonstrated implementation or verified results.",
-      "review_status": "unreviewed", "reference": null
+      "review_status": "unreviewed",
+      "reference": null
     },
     {
-      "id": "ai_en_measurement", "track": "ai", "question_index": 1, "language": "en-IN",
+      "id": "ai_en_measurement",
+      "track": "ai",
+      "question_index": 1,
+      "language": "en-IN",
       "answer": "I split the dataset into train and validation sets, evaluated precision and recall on a held-out test set, then improved the classifier through augmentation. I compared results across 3 random seeds before choosing the final model.",
-      "review_status": "unreviewed", "reference": null
+      "review_status": "unreviewed",
+      "reference": null
     },
     {
-      "id": "ai_en_false_claim", "track": "ai", "question_index": 1, "language": "en-IN",
+      "id": "ai_en_false_claim",
+      "track": "ai",
+      "question_index": 1,
+      "language": "en-IN",
       "answer": "My evaluation metric was accuracy and the validation method was testing. Therefore I improved it to 100 percent, which means the model can never make another mistake.",
-      "review_status": "unreviewed", "reference": null
+      "review_status": "unreviewed",
+      "reference": null
     },
     {
-      "id": "software_en_debugging", "track": "software", "question_index": 0, "language": "en-IN",
+      "id": "software_en_debugging",
+      "track": "software",
+      "question_index": 0,
+      "language": "en-IN",
       "answer": "I reproduced a bug, read the stack trace, and found a timeout. After changing the request path, I ran unit tests to verify the fix and checked the logs for regressions.",
-      "review_status": "unreviewed", "reference": null
+      "review_status": "unreviewed",
+      "reference": null
     },
     {
-      "id": "agentic_te_terms", "track": "agentic", "question_index": 0, "language": "te-IN",
+      "id": "agentic_te_terms",
+      "track": "agentic",
+      "question_index": 0,
+      "language": "te-IN",
       "answer": "నేను ఏజెంట్ నిర్మించాను. అది టూల్ ఉపయోగిస్తుంది. ఫైల్స్ మార్చే ముందు అనుమతి తీసుకుంటుంది, తర్వాత పరీక్ష చేసి లాగ్స్ చూస్తాను.",
-      "review_status": "unreviewed", "reference": null
+      "review_status": "unreviewed",
+      "reference": null
     },
     {
-      "id": "ai_te_short", "track": "ai", "question_index": 0, "language": "te-IN",
+      "id": "ai_te_short",
+      "track": "ai",
+      "question_index": 0,
+      "language": "te-IN",
       "answer": "నేను మోడల్ తయారు చేశాను. డేటా ఉపయోగించాను.",
-      "review_status": "unreviewed", "reference": null
+      "review_status": "unreviewed",
+      "reference": null
     },
     {
-      "id": "software_hi_short", "track": "software", "question_index": 0, "language": "hi-IN",
+      "id": "software_hi_short",
+      "track": "software",
+      "question_index": 0,
+      "language": "hi-IN",
       "answer": "मैंने बग खोजा और परीक्षण किया।",
-      "review_status": "unreviewed", "reference": null
+      "review_status": "unreviewed",
+      "reference": null
+    },
+    {
+      "id": "agentic_te_en_codemix",
+      "track": "agentic",
+      "question_index": 0,
+      "language": "te-IN",
+      "answer": "నేను Python మరియు Docker తో ఒక code repair agent build చేశాను. Unreliable edits రాకుండా restricted file tools వాడాను మరియు human approval guardrail పెట్టాను. Local fixture లో 12 unit tests pass అయ్యాయి.",
+      "review_status": "unreviewed",
+      "reference": null
+    },
+    {
+      "id": "ai_hi_en_codemix",
+      "track": "ai",
+      "question_index": 1,
+      "language": "hi-IN",
+      "answer": "मैंने PyTorch में classification model train किया। Dataset को 80/20 train and validation split में बाँटा, recall और precision evaluate किया और baseline model से compare करके 5% accuracy improve किया।",
+      "review_status": "unreviewed",
+      "reference": null
+    },
+    {
+      "id": "software_te_en_codemix",
+      "track": "software",
+      "question_index": 0,
+      "language": "te-IN",
+      "answer": "Invoice total calculation లో ఒక critical bug వచ్చింది. First నేను unit test తో failure reproduce చేశాను. తర్వాత function edit చేసి complete test suite run చేశాను, bug fix verify అయింది.",
+      "review_status": "unreviewed",
+      "reference": null
+    },
+    {
+      "id": "software_hi_en_codemix",
+      "track": "software",
+      "question_index": 1,
+      "language": "hi-IN",
+      "answer": "High traffic time पर backend database overload हो रहा था। मैंने Redis cache और queue implement किया, timeout और retry configure किया और p99 latency को 500ms से 120ms पर लाया।",
+      "review_status": "unreviewed",
+      "reference": null
     }
   ]
 }

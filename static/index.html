@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b1224" />
-  <title>InterviewMirror AI — Speak. Reflect. Improve.</title>
+  <title>InterviewMirror AI — Hands-Free Spoken Interview</title>
   <link rel="stylesheet" href="/static/styles.css" />
   <script src="/static/realtime-client.js" defer></script>
   <script src="/static/app.js" defer></script>
@@ -18,17 +18,18 @@
       <button type="button" class="nav-item" id="progress-nav"><span class="nav-icon">◷</span> Progress review</button>
       <div class="sidebar-bottom">
         <div class="backend-status"><span class="status-dot" id="side-dot"></span><div><strong id="side-status">Checking provider</strong><small id="side-mode">Connecting to backend…</small></div></div>
-        <div class="sidebar-note">Built for deliberate practice.<br />SQLite-backed practice; production deployment requires additional review.</div>
+        <div class="sidebar-note">Hands-free spoken practice.<br />Powered by Gnani Prisma &amp; Timbre.</div>
       </div>
     </aside>
     <main class="main">
-      <header class="topbar"><span class="breadcrumb">Workspace <span>/</span> Interview studio</span><span class="top-right">v1.2 · Noise & scoring controls <span class="sparkle">✦</span></span></header>
+      <header class="topbar"><span class="breadcrumb">Workspace <span>/</span> Hands-free interview</span><span class="top-right">Realtime Voice · Zero Manual Controls <span class="sparkle">✦</span></span></header>
       <section class="intro">
-        <div class="eyebrow"><span class="mini-dot"></span> AI-POWERED INTERVIEW PRACTICE</div>
-        <h1>Speak with clarity.<br /><em>Interview with confidence.</em></h1>
-        <p>Rehearse real technical interviews, in the language that feels right. Get clear, actionable feedback—one answer at a time.</p>
+        <div class="eyebrow"><span class="mini-dot"></span> HANDS-FREE TECHNICAL INTERVIEW PRACTICE</div>
+        <h1>Speak naturally.<br /><em>Autonomous turn-taking voice coach.</em></h1>
+        <p>Choose your focus, give consent, and press Start. The coach speaks questions, listens, detects when you finish, and speaks the next question automatically—no buttons required.</p>
       </section>
-      <div class="mode-banner" id="mode-banner" role="status"><span class="mode-icon">●</span><div><strong id="mode-heading">Checking Gnani connection…</strong><span id="mode-description">The app works locally even before an API key is added.</span></div><span class="mode-tag" id="mode-tag">Checking</span></div>
+      <div class="mode-banner" id="mode-banner" role="status"><span class="mode-icon">●</span><div><strong id="mode-heading">Checking Gnani connection…</strong><span id="mode-description">Testing server streaming endpoints.</span></div><span class="mode-tag" id="mode-tag">Checking</span></div>
+
       <section class="config-card" id="auth-panel" hidden>
         <div class="card-heading"><div><span class="overline">SECURE WORKSPACE</span><h2>Sign in to keep your progress</h2></div></div>
         <p id="auth-status-text">Your interview transcripts are stored under your account in SQLite, not in browser storage.</p>
@@ -41,63 +42,189 @@
         <div id="auth-signed-in" hidden><button type="button" id="auth-restore-btn" class="btn btn-secondary">Resume most recent interview</button> <button type="button" id="auth-logout-btn" class="btn btn-secondary">Sign out</button></div>
         <small>Auth tokens remain in memory and expire after one hour. HTTPS is required for public use.</small>
       </section>
+
       <section id="studio-view" aria-label="Interview studio">
-      <section class="config-card">
-        <div class="card-heading"><div><span class="overline">01 / SET UP YOUR SESSION</span><h2>Make it your interview</h2></div><span class="time-chip">~ 5 MIN PRACTICE</span></div>
-        <div class="form-grid"><label>Interview focus<select id="track"><option value="agentic">Agentic AI &amp; LLMs</option><option value="ai">Machine Learning</option><option value="software">Software Engineering</option></select></label><label>Interview language<select id="language"><option value="en-IN">English (India)</option><option value="te-IN">తెలుగు · Telugu</option><option value="hi-IN">हिन्दी · Hindi</option></select></label><button id="start-btn" class="btn btn-primary">Start interview <span>↗</span></button></div>
-      </section>
-      <section class="work-grid">
-        <div class="interview-card">
-          <div class="interview-header"><div><span class="overline">02 / LIVE PRACTICE</span><h2>Your interview space</h2></div><div class="session-pill" id="session-pill"><span></span> Not started</div></div>
-          <div class="question-area">
-            <ol class="stepper" id="interview-stepper" aria-label="Interview questions"><li>1. Prepare</li><li>2. Practice</li><li>3. Review</li></ol>
-            <div class="question-meta"><span id="question-count">QUESTION 00 / 03</span><span id="question-track">AGENTIC AI</span></div>
-            <h3 id="question-text">The best interviews start with a good question.</h3>
-            <p id="question-hint">Set your preferences above, then start a three-question practice session.</p>
-            <div class="orb-wrap"><div class="orb" id="orb"><div class="orb-core"><span id="orb-icon">◉</span></div></div><div class="orb-caption" id="orb-caption">Ready when you are</div></div>
-            <div class="action-row"><button class="btn btn-secondary" id="listen-btn" disabled>▷ Listen to question</button><button class="btn btn-record" id="record-btn" disabled>● Record answer <span id="record-counter">00:00</span></button></div>
-            <div class="action-row record-review"><button class="btn btn-secondary" id="preview-btn" disabled>▷ Replay recording</button><button class="btn btn-secondary" id="save-record-btn" disabled>↓ Save WAV</button></div>
-            <label class="noise-option"><input type="checkbox" id="realtime-toggle"> Enable realtime streaming mode (experimental)</label>
-            <label class="noise-option" for="noise-policy">Noise processing <select id="noise-policy"><option value="off">Raw audio (recommended until benchmarked)</option><option value="spectral">Experimental spectral noise reduction</option><option value="deepfilter3" disabled hidden>DeepFilterNet3 neural enhancement (optional install)</option></select></label><label class="noise-option" for="stt-model">Gnani transcription <select id="stt-model"><option value="prisma-v2.5">Prisma v2.5 (default)</option><option value="prisma-v3.0">Prisma v3.0 (mixed language)</option></select></label><label class="consent-option"><input type="checkbox" id="audio-consent"> I consent to sending my recorded answer to Gnani for transcription. I can decline and type instead.</label>
-            <small class="noise-caution">Processing is opt-in; enhancement can distort speech and does not guarantee more accurate transcription.</small>
-            <small class="record-diagnostics" id="record-diagnostics" role="status" aria-live="polite" hidden></small>
-            <small class="record-guidance" id="record-guidance">Record and replay locally without a Gnani key. Real transcription needs API access.</small>
-          </div>
-          <div class="answer-area">
-            <div id="transcript-review" class="transcript-review" hidden>
-              <label>Provider transcript (original)</label>
-              <p id="provider-transcript"></p>
-              <label>Your edited version</label>
-              <textarea id="edited-transcript" rows="3"></textarea>
+        <!-- Pre-interview Setup Card -->
+        <section class="config-card" id="setup-card">
+          <div class="card-heading"><div><span class="overline">01 / SETUP YOUR PRACTICE</span><h2>Choose role &amp; language</h2></div><span class="time-chip">~ 5 MIN PRACTICE</span></div>
+          <div class="form-grid">
+            <label>Interview focus
+              <select id="track">
+                <option value="agentic">Agentic AI &amp; LLMs</option>
+                <option value="ai">Machine Learning</option>
+                <option value="software">Software Engineering</option>
+              </select>
+            </label>
+            <label>Interview language
+              <select id="language">
+                <option value="en-IN">English (India)</option>
+                <option value="te-IN">తెలుగు · Telugu</option>
+                <option value="hi-IN">हिन्दी · Hindi</option>
+              </select>
+            </label>
+            <label style="grid-column: 1 / -1; margin-top: 4px;">GitHub profile or repository (optional)
+              <input type="text" id="github-repo" placeholder="e.g. AnanthKumar1810 or AnanthKumar1810/bug-fixer" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border, #333); background: var(--bg-card, #1a1a1a); color: var(--text-primary, #fff); font-size: 0.95rem; margin-top: 6px;">
+            </label>
+            <label style="grid-column: 1 / -1; margin-top: 4px;">Resume text &amp; achievements (optional)
+              <textarea id="resume-text" rows="3" placeholder="Paste your resume summary, background, projects, and achievements (e.g. hackathons, awards, certifications, metrics)..." style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border, #333); background: var(--bg-card, #1a1a1a); color: var(--text-primary, #fff); font-size: 0.95rem; margin-top: 6px; resize: vertical;"></textarea>
+            </label>
+            <div style="grid-column: 1 / -1; margin-top: 6px;">
+              <label class="consent-option">
+                <input type="checkbox" id="audio-consent"> <strong>I consent to streaming my microphone audio to Gnani for real-time transcription.</strong>
+              </label>
             </div>
-            <div class="answer-label"><label for="answer-input">YOUR ANSWER</label><span id="answer-counter">0 characters</span></div><textarea id="answer-input" rows="5" maxlength="4000" placeholder="Type your answer, or record and review the Gnani transcript when live mode is enabled…" disabled></textarea><div class="answer-footer"><button class="text-btn" id="example-btn" disabled>Use synthetic sample answer</button><button class="btn btn-primary" id="submit-btn" disabled>Get feedback <span>↗</span></button></div></div>
-        </div>
-        <div class="right-panel">
-          <div class="coach-card"><div class="coach-top"><span class="coach-symbol">✳</span><span>YOUR PRACTICE COACH</span></div><h2 id="coach-headline">Progress is built one answer at a time.</h2><p id="coach-subtitle">After you respond, we’ll show what worked, what to improve and what to practice next.</p><div id="feedback-panel" class="feedback-panel" hidden>
-            <div class="score-wrap"><div><span class="overline">ANSWER SCORE</span><div class="score-main"><strong id="score-value">--</strong><span>/100</span></div></div><div class="score-dial" id="score-dial"><span id="score-dial-label">--</span></div></div>
-            <div class="rubric" id="rubric"></div>
-            <div class="feedback-list"><h4>✓ What worked</h4><ul id="strengths"></ul></div><div class="feedback-list improvement"><h4>↗ What to improve</h4><ul id="improvements"></ul></div>
-            <div class="feedback-list"><h4>Concept coverage (signals, not fact checking)</h4><ul id="coverage-list"></ul></div>
-            <div class="feedback-list improvement" id="risk-block" hidden><h4>⚠ Scoring reliability warnings</h4><ul id="risk-list"></ul></div><div class="feedback-list" id="evidence-block" hidden><h4>Evidence quoted from your answer</h4><ul id="evidence-list"></ul></div>
-            <div class="followup"><small>FOLLOW-UP TO PRACTICE</small><p id="followup-text"></p></div>
-            <p class="score-disclaimer" id="score-disclaimer"></p>
-          </div><section id="report-summary" class="report-summary" hidden><div class="overline">SESSION SUMMARY</div><h3>Review your interview</h3><div class="summary-score">Average practice score <strong id="summary-score">—</strong></div><div id="summary-metrics"></div><h4>Concepts to revisit</h4><ul id="report-priorities"></ul><p>Scores reflect transcript signals, not factual verification, spoken delivery or hiring suitability.</p></section><button class="btn btn-primary next-btn" id="next-btn" hidden>Next question <span>→</span></button><button class="btn btn-secondary next-btn" id="report-btn" hidden>Download session report ↓</button><button class="btn btn-secondary next-btn" id="delete-session-btn" hidden>Delete this practice session</button>
-          <div class="mini-stats"><div><span>Questions answered</span><strong id="stat-answered">0 <small>/ 3</small></strong></div><div><span>Average practice score</span><strong id="stat-score">—</strong></div></div>
-          <div class="provider-card"><span class="provider-icon">◎</span><div><h3>Powered by Gnani speech</h3><p><strong>Gnani Prisma</strong> for transcription<br /><strong>Gnani Timbre</strong> for spoken questions<br /><strong>Text-based practice rubric</strong> for feedback</p><span id="coach-method">Coach: uncalibrated text-based practice rubric</span> <a href="/api/diagnostics" target="_blank" rel="noopener noreferrer" style="display:block;margin-top:8px;color:inherit;text-decoration:underline;">View connection diagnostics</a></div></div>
-        </div>
+            <button id="start-btn" class="btn btn-primary" style="grid-column: 1 / -1; margin-top: 8px;">Start interview <span>↗</span></button>
+          </div>
+        </section>
+
+        <!-- Active Hands-Free Interview Card -->
+        <section class="work-grid" id="interview-workspace">
+          <div class="interview-card">
+            <div class="interview-header">
+              <div><span class="overline">02 / HANDS-FREE PRACTICE</span><h2>Spoken interview room</h2></div>
+              <div class="session-pill" id="session-pill"><span></span> Not started</div>
+            </div>
+            <div class="question-area">
+              <ol class="stepper" id="interview-stepper" aria-label="Interview questions"><li>1. Prepare</li><li>2. Practice</li><li>3. Review</li></ol>
+              <div class="question-meta"><span id="question-count">QUESTION 00 / 03</span><span id="question-track">AGENTIC AI</span></div>
+              <h3 id="question-text">Click Start to begin. The coach will speak your first question.</h3>
+              <p id="question-hint">Once started, speak naturally. The coach listens, detects when you finish, and advances automatically.</p>
+
+              <!-- Expressive Animated Status Orb -->
+              <div class="orb-wrap">
+                <div class="orb" id="orb"><div class="orb-core"><span id="orb-icon">◉</span></div></div>
+                <div class="orb-caption" id="orb-caption">Ready when you are</div>
+              </div>
+
+              <!-- Hands-Free Active Action Row: ONLY End Interview -->
+              <div class="action-row" id="handsfree-controls" style="justify-content: center; margin: 16px 0;">
+                <button type="button" class="btn btn-secondary" id="end-interview-btn" style="color: #f87171; border-color: #f87171;" hidden>■ End interview early</button>
+              </div>
+
+              <!-- Unobtrusive Live Transcript Area -->
+              <div class="answer-area" id="live-transcript-area" style="margin-top: 12px;">
+                <div class="answer-label">
+                  <label for="live-transcript">LIVE SPOKEN ANSWER</label>
+                  <span id="answer-counter">0 words</span>
+                </div>
+                <div id="live-transcript" class="live-transcript-box" style="min-height: 80px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-size: 15px; line-height: 1.5; color: #e2e8f0;">
+                  <em>Your spoken answer will appear here in real time as you speak…</em>
+                </div>
+              </div>
+
+              <!-- Collapsible Diagnostic & REST Fallback Panel (hidden during hands-free interview) -->
+              <details id="diagnostic-details" style="margin-top: 20px; font-size: 13px; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+                <summary style="cursor: pointer; user-select: none;">▷ REST Diagnostic &amp; Manual Fallback Controls</summary>
+                <div style="padding: 12px 0;">
+                  <p style="margin-bottom: 8px;">Use these controls for offline microphone preflight or REST testing without WebSockets:</p>
+                  <div class="action-row" style="margin-bottom: 8px;">
+                    <button class="btn btn-secondary" id="listen-btn">▷ Listen (REST)</button>
+                    <button class="btn btn-record" id="record-btn">● Record (REST) <span id="record-counter">00:00</span></button>
+                    <button class="btn btn-secondary" id="preview-btn" disabled>▷ Replay WAV</button>
+                    <button class="btn btn-secondary" id="save-record-btn" disabled>↓ Save WAV</button>
+                  </div>
+                  <small class="record-guidance" id="record-guidance">Record and replay locally without a Gnani key. Real transcription needs API access.</small>
+                  <label class="noise-option" for="noise-policy" style="display: block; margin: 8px 0;">Noise processing:
+                    <select id="noise-policy">
+                      <option value="off">Raw audio (recommended)</option>
+                      <option value="spectral">Experimental spectral reduction</option>
+                      <option value="deepfilter3" disabled hidden>DeepFilterNet3 neural enhancement</option>
+                    </select>
+                  </label>
+                  <textarea id="answer-input" rows="3" style="width: 100%; margin-top: 6px;" placeholder="Manual typed transcript fallback…"></textarea>
+                  <div class="answer-footer" style="margin-top: 6px;">
+                    <button class="text-btn" id="example-btn">Use synthetic answer</button>
+                    <button class="btn btn-primary" id="submit-btn">Submit via REST <span>↗</span></button>
+                  </div>
+                  <small class="record-diagnostics" id="record-diagnostics" role="status" aria-live="polite" hidden></small>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <!-- Coach Feedback & Review Panel -->
+          <div class="right-panel">
+            <div class="coach-card">
+              <div class="coach-top"><span class="coach-symbol">✳</span><span>YOUR PRACTICE COACH</span></div>
+              <h2 id="coach-headline">Progress is built one answer at a time.</h2>
+              <p id="coach-subtitle">Speak your answer. The coach evaluates concept coverage and selects adaptive follow-ups.</p>
+              
+              <!-- Turn Feedback (shown during review & summary) -->
+              <div id="feedback-panel" class="feedback-panel" hidden>
+                <div class="score-wrap">
+                  <div><span class="overline">PRACTICE SCORE</span><div class="score-main"><strong id="score-value">--</strong><span>/100</span></div></div>
+                  <div class="score-dial" id="score-dial"><span id="score-dial-label">--</span></div>
+                </div>
+                <div class="rubric" id="rubric"></div>
+                <div class="feedback-list"><h4>✓ What worked</h4><ul id="strengths"></ul></div>
+                <div class="feedback-list improvement"><h4>↗ What to improve</h4><ul id="improvements"></ul></div>
+                <div class="feedback-list"><h4>Concept coverage (transcript evidence, not fact checking)</h4><ul id="coverage-list"></ul></div>
+                <div class="feedback-list improvement" id="risk-block" hidden><h4>⚠ Scoring reliability warnings</h4><ul id="risk-list"></ul></div>
+                <div class="feedback-list" id="evidence-block" hidden><h4>Evidence quoted from your answer</h4><ul id="evidence-list"></ul></div>
+                <div class="followup"><small>FOLLOW-UP TOPIC</small><p id="followup-text"></p></div>
+                <p class="score-disclaimer" id="score-disclaimer"></p>
+              </div>
+
+              <!-- Post-Interview Session Summary & Transcript Correction -->
+              <section id="report-summary" class="report-summary" hidden>
+                <div class="overline">SESSION COMPLETE</div>
+                <h3>Interview practice report</h3>
+                <div class="summary-score">Average practice score <strong id="summary-score">—</strong></div>
+                <div id="summary-metrics"></div>
+                <h4>Concepts to revisit</h4>
+                <ul id="report-priorities"></ul>
+
+                <div id="report-candidate-profile" style="margin-top: 14px; padding: 12px; background: rgba(30, 41, 59, 0.5); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);" hidden>
+                  <h4 style="margin-bottom: 6px;">Evaluated background &amp; achievements</h4>
+                  <div id="report-profile-content" style="font-size: 13px; color: #cbd5e1;"></div>
+                </div>
+
+                <!-- Transcript Review & Correction Area -->
+                <div id="transcript-correction-area" style="margin-top: 16px; padding: 12px; background: rgba(30, 41, 59, 0.7); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                  <h4 style="margin-bottom: 6px;">Review &amp; correct transcripts</h4>
+                  <p style="font-size: 13px; color: #94a3b8; margin-bottom: 10px;">Select any answer to inspect original speech recognition and recompute practice score if corrected:</p>
+                  <div id="correction-answers-list"></div>
+                </div>
+
+                <p style="font-size: 12px; color: #94a3b8; margin-top: 12px;">Uncalibrated practice guidance based on transcript signals. Not an employment hiring evaluation or pronunciation assessment.</p>
+              </section>
+
+              <!-- End of Session Navigation -->
+              <div class="action-row" style="margin-top: 16px;">
+                <button class="btn btn-secondary next-btn" id="report-btn" hidden>Download session report ↓</button>
+                <button class="btn btn-primary next-btn" id="restart-interview-btn" hidden>Start new interview <span>↗</span></button>
+              </div>
+
+              <div class="mini-stats">
+                <div><span>Questions answered</span><strong id="stat-answered">0 <small>/ 3</small></strong></div>
+                <div><span>Average score</span><strong id="stat-score">—</strong></div>
+              </div>
+
+              <div class="provider-card">
+                <span class="provider-icon">◎</span>
+                <div>
+                  <h3>Powered by Gnani speech</h3>
+                  <p><strong>Gnani Prisma</strong> for streaming STT &amp; VAD<br /><strong>Gnani Timbre</strong> for spoken questions<br /><strong>Deterministic practice rubric</strong> for feedback</p>
+                  <span id="coach-method">Coach: uncalibrated practice guidance</span>
+                  <a href="/api/diagnostics" target="_blank" rel="noopener noreferrer" style="display:block;margin-top:8px;color:inherit;text-decoration:underline;">View connection diagnostics</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </section>
-      </section>
+
+      <!-- Progress review tab -->
       <section id="progress-view" class="progress-view" aria-labelledby="progress-heading" hidden>
         <div class="card-heading"><div><span class="overline">YOUR PRACTICE HISTORY</span><h2 id="progress-heading">Progress review</h2></div><button type="button" class="btn btn-secondary" id="progress-refresh">Refresh</button></div>
         <p id="progress-status" role="status" aria-live="polite">Sign in to review saved interviews.</p>
         <div id="progress-list" class="progress-list"></div>
         <section id="progress-detail" class="progress-detail" aria-label="Selected interview report" hidden></section>
       </section>
+
       <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-      <footer class="footer"><span>InterviewMirror AI · private practice workspace</span><span>Transcript-based scores are practice aids, not hiring assessments.</span></footer>
+      <footer class="footer"><span>InterviewMirror AI · hands-free practice studio</span><span>Deterministic rubric scores are practice aids, not hiring assessments.</span></footer>
     </main>
   </div>
 </body>
 </html>
-
-

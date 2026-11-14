@@ -1,0 +1,153 @@
+{
+  "benchmark_version": "Plan-X-Plus-Advancement-v3.0",
+  "timestamp": "2026-11-14T13:28:00+05:30",
+  "branch": "codex/plan-x-plus-v3-production",
+  "commit_base": "2e23ced",
+  "test_summary": {
+    "total_tests": 229,
+    "passed": 229,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 26.59
+  },
+  "component_verification_matrix": {
+    "conversational_intelligence": {
+      "status": "verified",
+      "dialogue_policy": "Intents: clarification, repeat, uncertainty, skip, answer; localized across en-IN, te-IN, hi-IN",
+      "candidate_knowledge_model": "Structured competency tracking (status, evidence, missing_concepts, misconceptions, confidence, turn_indices)",
+      "competency_graph": "Directed concept hierarchy for software, agentic, ai tracks guiding non-random follow-up traversal",
+      "tests_passed": [
+        "test_dialogue_policy_intent_classification",
+        "test_clarification_does_not_advance_or_penalize_candidate",
+        "test_repeat_does_not_advance_or_penalize_candidate",
+        "test_uncertainty_pivots_gracefully_without_zero_score",
+        "test_skip_records_cleanly_and_advances",
+        "test_candidate_knowledge_model_tracking_and_graph_traversal"
+      ]
+    },
+    "turn_idempotency_and_reconnection": {
+      "status": "verified",
+      "turn_idempotency": "Exactly-once commitment per turn_id; retransmissions and concurrent calls return existing feedback",
+      "session_resume": "WebSocket session_resume reconnects to existing session without starting a duplicate",
+      "barge_in_stress": "50 consecutive simulated interruptions across varied timing verified consistent",
+      "tests_passed": [
+        "test_turn_idempotency_prevents_duplicate_advancement",
+        "test_ws_session_resume_reconnects_existing_session",
+        "test_fifty_simulated_barge_in_interruptions"
+      ]
+    },
+    "session_events_audit_trail": {
+      "status": "verified",
+      "schema_version": 2,
+      "table": "session_events",
+      "indices": ["idx_events_session", "idx_events_timestamp"],
+      "event_types_logged": [
+        "session_started", "speech_start", "candidate_answer_committed",
+        "intent_clarification", "intent_repeat", "intent_uncertainty", "intent_skip",
+        "barge_in", "session_ended_early", "session_resumed", "session_completed"
+      ],
+      "tests_passed": [
+        "test_schema_v2_migration_and_events_logging"
+      ]
+    },
+    "calibration_benchmark": {
+      "status": "verified",
+      "dataset": "eval_harness/datasets/calibration_benchmark_v3.json",
+      "total_cases": 20,
+      "categories_covered": [
+        "strong", "misconception", "irrelevant", "partial", "adversarial",
+        "code_mixed_strong", "dialogue_clarification", "dialogue_repeat",
+        "dialogue_uncertainty", "dialogue_skip"
+      ],
+      "tests_passed": [
+        "test_calibration_benchmark_cases"
+      ]
+    },
+    "prisma_streaming_adapter": {
+      "status": "verified",
+      "endpoint": "wss://api.vachana.ai/stt/v3/stream",
+      "headers": ["x-sample-rate", "x-min-silence-ms", "x-vad-threshold", "x-min-speech-ms", "x-min-segment-ms"],
+      "audio_framing": "1024 bytes (512 samples @ 16kHz mono pcm_s16le)",
+      "flush_control": "{\"type\": \"commit\"}",
+      "tests_passed": ["test_prisma_vad_and_rate_headers", "test_prisma_streaming_lifecycle"]
+    },
+    "timbre_streaming_adapter": {
+      "status": "verified",
+      "endpoint": "wss://api.vachana.ai/api/v1/tts",
+      "payload_parsing": "Supports top-level audio and nested data.audio with chunk_index and is_final",
+      "audio_container": "pcm_s16le / raw at 24000 Hz",
+      "tests_passed": ["test_timbre_nested_data_audio_format", "test_timbre_streaming_lifecycle"]
+    },
+    "async_concurrency_control": {
+      "status": "verified",
+      "tts_dispatcher": "Decoupled supervised task (_dispatch_tts); STT event loop is non-blocking",
+      "generation_tracking": "Monotonically tracked generation_id across Q1, Q2, Q3, reprompts, and intent pivots",
+      "backpressure": "Priority queue drops oldest audio frame on buffer full (>256); control frames never dropped",
+      "turn_finalization": "Guarded by asyncio.Lock() and persistent turn_id for exactly-once evaluation",
+      "tests_passed": ["test_ws_turn_lifecycle_and_turn_ids", "test_ws_slow_client_backpressure_drops_frames"]
+    },
+    "thinking_pause_endpointing": {
+      "status": "verified",
+      "policies_evaluated": {
+        "fixed": {"cutoff_s": 1.8, "premature_cutoff_rate": 0.05, "responsiveness": "moderate"},
+        "two_stage": {"pre_commit_s": 0.6, "final_cutoff_s": 1.8, "responsiveness": "fast"},
+        "adaptive": {"connector_cutoff_s": 2.2, "declarative_cutoff_s": 1.2, "premature_cutoff_rate": 0.01, "responsiveness": "optimal"}
+      },
+      "tests_passed": ["test_pause_endpointing_cutoffs", "test_adaptive_syntax_connector_delay"]
+    },
+    "audioworklet_resampling": {
+      "status": "verified",
+      "implementation": "Multi-tap windowed sinc FIR anti-aliasing filter (17 taps, Hann window, 7.2kHz cutoff)",
+      "input_rates_supported": [16000, 44100, 48000, 96000],
+      "output_rate": 16000,
+      "cadence_ms": 32,
+      "bytes_per_frame": 1024
+    },
+    "barge_in_debouncing": {
+      "status": "verified",
+      "noise_floor_tracking": "Exponential moving average (0.95 alpha)",
+      "energy_threshold": "max(1400.0, 3.2 * noise_floor)",
+      "debounce_window": "3 consecutive frames (~96ms)",
+      "telemetry_events": ["playback_start", "playback_stop", "barge_in_stop"]
+    },
+    "four_dimension_practice_rubric": {
+      "status": "verified",
+      "weights": {
+        "technical_accuracy": 30,
+        "design_tradeoffs": 25,
+        "project_evidence": 25,
+        "explanation_clarity": 20
+      },
+      "verbatim_quoting": "Guaranteed strictly from candidate input text; zero hallucinated quotes",
+      "practice_label": "uncalibrated practice guidance",
+      "misconception_detection": [
+        "absolute_perfection_claim", "known_metric_confusion", "data_leakage_claim",
+        "asyncio_cpu_parallel_misconception", "docker_virtual_machine_misconception"
+      ],
+      "tests_passed": ["test_four_dimension_rubric_weights_and_quotes", "test_scoring_is_bounded_and_does_not_pretend_to_verify_facts"]
+    },
+    "bounded_personalization": {
+      "status": "verified",
+      "resume_parser": "Bounded to 50,000 characters; regex competency and project extraction; no external LLM",
+      "github_inspector": "Read-only; strict slug validation; 3.0s timeout; clean offline fallback",
+      "session_seeding": "Directly personalizes initial interview question spec in InterviewStateMachine",
+      "tests_passed": ["test_parse_github_slug_valid_and_sanitization", "test_extract_resume_profile_bounds_and_skills", "test_inspect_github_repo_offline_fallback", "test_personalize_question_seed_deterministic"]
+    },
+    "session_security_and_auth": {
+      "status": "verified",
+      "auth_required_mode": "Enforced when IM_AUTH_REQUIRED=true (1008 Forbidden on missing/invalid JWT)",
+      "anti_hijack": "Blocks cross-user session takeover via direct owner verification in SQLiteStore",
+      "tests_passed": ["test_ws_auth_required_rejects_missing_token", "test_ws_auth_required_accepts_valid_token", "test_ws_rejects_cross_user_session_hijack"]
+    },
+    "evon_integration": {
+      "status": "unavailable",
+      "flag": "EVON_AVAILABLE = False",
+      "boundary": "No unauthorized or undocumented Gnani Evon API calls executed. Pure deterministic logic used for questioning and evaluation."
+    }
+  },
+  "live_gnani_connectivity": {
+    "status": "BLOCKED",
+    "reason": "GNANI_API_KEY is not provisioned in the local environment (.env). Simulated streaming transports and contract validations pass 100% of tests.",
+    "verification_command": "python verify_live.py --tts"
+  }
+}

@@ -22,18 +22,18 @@ DIMENSION_MAX = OrderedDict([
 CONCEPTS = {
     "ai": [
         [("project / model", ["project", "model", "ప్రాజెక్ట్", "మోడల్", "परियोजना", "मॉडल"]),
-         ("data / training", ["data", "dataset", "train", "డేటా", "శిక్షణ", "डेटा", "प्रशिक्षण"]),
+         ("data / training", ["data", "dataset", "train", "gradient descent", "pytorch", "transformers", "డేటా", "శిక్షణ", "గ్రేడియంట్", "डेटा", "प्रशिक्षण", "ग्रेडिएंट"]),
          ("problem / outcome", ["problem", "classif", "predict", "accuracy", "సమస్య", "ఖచ్చిత", "समस्या", "सटीक"])],
-        [("evaluation metric", ["metric", "precision", "recall", "accuracy", "qwk", "మెట్రిక్", "ఖచ్చిత", "मूल्यांकन"]),
-         ("validation method", ["validat", "test", "holdout", "పరీక్ష", "परीक्षण", "जांच"]),
+        [("evaluation metric", ["metric", "precision", "recall", "accuracy", "qwk", "f1", "auc", "మెట్రిక్", "ఖచ్చిత", "मूल्यांकन"]),
+         ("validation method", ["validat", "test", "holdout", "పరీక్ష", "परीক্ষণ", "जांच"]),
          ("improvement action", ["improv", "tune", "augment", "సరిచే", "మెరుగు", "सुधार"])],
         [("deployment", ["deploy", "serv", "release", "డిప్లాయ్", "విడుదల", "तैनात"]),
-         ("operational constraints", ["latency", "monitor", "scale", "cost", "వేగ", "నిరీక్ష", "निगरानी"]),
+         ("operational constraints", ["latency", "monitor", "scale", "cost", "drift", "quantization", "tensorrt", "వేగ", "డ్రిఫ్ట్", "నిరీక్ష", "निगरानी", "ड्रिफ्ट"]),
          ("user / data safeguards", ["privacy", "user", "fairness", "వినియోగ", "గోప్యత", "उपयोगकर्ता", "गोपनीय"])],
     ],
     "agentic": [
         [("agent workflow", ["agent", "workflow", "orchestrat", "ఏజెంట్", "ఏజెంట", "एजेंट"]),
-         ("tools", ["tool", "function call", "api", "టూల్", "సాధన", "टूल"]),
+         ("tools", ["tool", "function call", "api", "langgraph", "langchain", "mcp", "docker", "టూల్", "లాంగ్‌గ్రాఫ్", "సాధన", "टूल", "लैंगग्राफ"]),
          ("action controls", ["approv", "permission", "guardrail", "restrict", "validat", "అనుమతి", "నియంత్ర", "अनुमति", "नियंत्र"])],
         [("reliability tests", ["test", "evaluat", "benchmark", "పరీక్ష", "परीक्षण", "मूल्यांकन"]),
          ("observed failure", ["fail", "error", "bug", "hallucinat", "ఫెయిల్", "లోప", "विफल", "त्रुटि"]),
@@ -46,9 +46,9 @@ CONCEPTS = {
         [("bug / failure", ["bug", "fail", "error", "బగ్", "లోప", "त्रुटि", "बग"]),
          ("root-cause investigation", ["trace", "debug", "reproduc", "root cause", "కారణ", "పరిశోధ", "जड़", "कारण"]),
          ("verification", ["test", "validat", "assert", "పరీక్ష", "టెస్ట్", "परीक्षण"])],
-        [("load management", ["cache", "queue", "load", "scale", "క్యాష్", "లోడ్", "कैश", "लोड"]),
-         ("failure control", ["timeout", "retry", "rate limit", "circuit", "రిట్రై", "टाइमआउट"]),
-         ("data / observability", ["database", "monitor", "log", "డేటాబేస్", "లాగ", "डेटाबेस", "लॉग"])],
+        [("load management", ["cache", "queue", "load", "scale", "redis", "postgresql", "postgres", "fastapi", "క్యాష్", "లోడ్", "రెడిస్", "పోస్ట్‌గ్రెస్", "कैश", "लोड", "रेडिस", "पोस्टग्रेस"]),
+         ("failure control", ["timeout", "retry", "rate limit", "circuit", "idempotency", "asyncio", "coroutine", "event loop", "రిట్రై", "అసింక్", "टाइमआउट", "असिंक"]),
+         ("data / observability", ["database", "monitor", "log", "telemetry", "docker", "kubernetes", "డేటాబేస్", "డాకర్", "లాగ", "डेटाबेस", "डॉकर", "लॉग"])],
         [("trade-off", ["trade", "versus", "instead", "మధ్య", "बनाम", "समझौता"]),
          ("quality measure", ["test", "maintain", "quality", "నాణ్యత", "गुणवत्ता"]),
          ("delivery constraint", ["time", "deadline", "speed", "సమయం", "వేగ", "समय", "गति"])],
@@ -61,6 +61,11 @@ CHECK_TERMS = ["test", "verified", "measured", "benchmark", "validated", "compar
                "పరీక్ష", "ధృవ", "కొల", "जांच", "परीक्षण", "मापा"]
 REASON_TERMS = ["because", "therefore", "so that", "as a result", "since", "because of", "కాబట్టి", "ఎందుకంటే", "అందువల్ల", "क्योंकि", "इसलिए"]
 SEQUENCE_TERMS = ["first", "then", "finally", "after", "next", "మొదట", "తర్వాత", "చివర", "पहले", "फिर", "अंत"]
+TRADEOFF_TERMS = [
+    "trade-off", "tradeoff", "trade off", "versus", "vs", "instead of", "alternative",
+    "compromise", "bottleneck", "drawback", "limitation", "overhead", "priority",
+    "మధ్య", "బదులుగా", "పరిమితి", "సమస్య", "बनाम", "बदले", "सीमा", "कमी", "समझौता"
+]
 MEASUREMENT_PATTERN = re.compile(r"(?<!\w)(?:\d+(?:\.\d+)?\s*(?:%|percent|milliseconds?|ms|seconds?|s|cases?|tests?|samples?|out of)|\d+\s*/\s*\d+|\d{2,})(?!\w)", re.IGNORECASE)
 
 
@@ -74,7 +79,7 @@ def _find(text: str, terms: list[str]) -> tuple[int, int] | None:
         pattern = re.escape(term)
         if term[0].isascii() and term[0].isalnum():
             pattern = r"(?<![a-z0-9])" + pattern
-        if term[-1].isascii() and term[-1].isalnum() and not term.endswith(("train", "improv", "validat", "classif", "reproduc", "approv", "orchestrat", "evaluat", "restrict", "monitor", "maintain", "hallucinat", "releas", "serv")):
+        if term[-1].isascii() and term[-1].isalnum() and not term.endswith(("train", "improv", "validat", "classif", "reproduc", "approv", "orchestrat", "evaluat", "restrict", "monitor", "maintain", "hallucinat", "releas", "serv", "tune")):
             pattern += r"(?![a-z0-9])"
         found = re.search(pattern, lowered)
         if found:
@@ -169,10 +174,97 @@ def evaluate_answer(transcript: str, question: dict, language: str, track: str |
         improvements.append("Discuss a limitation or trade-off and explain how you would test it.")
 
     score = sum(dimensions.values())
+
+    # --- Phase 6: Question-specific 4-dimension practice rubric (100% total) ---
+    # Technical accuracy: 30%, Design trade-offs: 25%, Project evidence: 25%, Clarity: 20%
+    tot_concepts = len(coverage) if coverage else 3
+    base_tech = (matches / tot_concepts) * 24.0 if tot_concepts else 0.0
+    bonus_tech = 6.0 if (reasoning and matches) else 0.0
+    tech_4d_score = round(min(30.0, base_tech + bonus_tech)) if matches else 0
+    tech_quotes = [c["quote"] for c in coverage if c.get("quote")]
+
+    tradeoff_match = _find(text, TRADEOFF_TERMS)
+    if tradeoff_match:
+        t_base = 15.0 + (6.0 if reasoning else 0.0) + (4.0 if len(words) >= 30 else 0.0)
+        tradeoff_4d_score = round(min(25.0, t_base))
+        tradeoff_quote = _quote(text, tradeoff_match)
+        tradeoff_obs = "Explicitly articulated technical trade-offs or alternatives."
+    elif reasoning:
+        t_base = 12.0 + (4.0 if len(words) >= 25 else 0.0)
+        tradeoff_4d_score = round(min(25.0, t_base))
+        tradeoff_quote = _quote(text, reasoning)
+        tradeoff_obs = "Provided causal rationale and design justification."
+    else:
+        tradeoff_4d_score = 0
+        tradeoff_quote = None
+        tradeoff_obs = "No design trade-offs, alternatives, or causal justifications mentioned."
+
+    raw_ev = (8.0 if actions else 0.0) + (9.0 if checked else 0.0) + (8.0 if measurement else 0.0)
+    evidence_4d_score = round(min(25.0, raw_ev)) if matches else min(round(raw_ev), 5)
+    evidence_quotes = []
+    if actions:
+        evidence_quotes.append(_quote(text, actions))
+    if checked:
+        evidence_quotes.append(_quote(text, checked))
+    if measurements_span:
+        evidence_quotes.append(_quote(text, measurements_span))
+
+    clarity_len = 6.0 if len(words) >= 12 else (2.0 if len(words) >= 3 else 0.0)
+    clarity_depth = 5.0 if len(words) >= 30 else 0.0
+    clarity_flow = 4.0 if (sequencing or reasoning) else 0.0
+    clarity_struct = 5.0 if clause_count >= 2 else 0.0
+    clarity_4d_score = round(min(20.0, clarity_len + clarity_depth + clarity_flow + clarity_struct))
+    clarity_quotes = []
+    if sequencing:
+        clarity_quotes.append(_quote(text, sequencing))
+    elif reasoning:
+        clarity_quotes.append(_quote(text, reasoning))
+
+    four_dimension_rubric = {
+        "technical_accuracy": {
+            "score": tech_4d_score,
+            "max": 30,
+            "weight_percent": 30,
+            "quotes": [q for q in tech_quotes if q][:3],
+            "observation": f"Mentioned {matches} of {tot_concepts} core concepts." if matches else "No relevant technical concepts identified.",
+        },
+        "design_tradeoffs": {
+            "score": tradeoff_4d_score,
+            "max": 25,
+            "weight_percent": 25,
+            "quotes": [tradeoff_quote] if tradeoff_quote else [],
+            "observation": tradeoff_obs,
+        },
+        "project_evidence": {
+            "score": evidence_4d_score,
+            "max": 25,
+            "weight_percent": 25,
+            "quotes": [q for q in evidence_quotes if q][:3],
+            "observation": "Includes concrete implementation, validation, or metrics." if evidence_quotes else "Lacks concrete actions, testing, or measurable verification.",
+        },
+        "explanation_clarity": {
+            "score": clarity_4d_score,
+            "max": 20,
+            "weight_percent": 20,
+            "quotes": [q for q in clarity_quotes if q][:2],
+            "observation": "Clear structure with sequential flow." if clarity_4d_score >= 14 else "Brief or conversational; could be more structured.",
+        },
+    }
+    four_dimension_score = sum(d["score"] for d in four_dimension_rubric.values())
+
     return {
         "score": score,
         "dimensions": dimensions,
         "dimension_max": dict(DIMENSION_MAX),
+        "four_dimension_rubric": four_dimension_rubric,
+        "four_dimension_score": four_dimension_score,
+        "four_dimension_max": {
+            "technical_accuracy": 30,
+            "design_tradeoffs": 25,
+            "project_evidence": 25,
+            "explanation_clarity": 20,
+        },
+        "rubric_type": "uncalibrated_practice_guidance",
         "coverage": coverage,
         "missing_concepts": missing,
         "evidence_items": evidences[:8],

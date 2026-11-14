@@ -6,7 +6,7 @@ import uuid
 import time
 import threading
 from collections import deque
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, fields
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -78,6 +78,7 @@ class Session:
     pending_question: dict | None = None
     pending_kind: str = "core"
     pending_reason: str = ""
+    personalized_seed: dict | None = None
     created: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # Best-effort per-process login throttle; proxy-level shared throttling is still
@@ -171,6 +172,10 @@ def my_sessions(user_id: str | None = Depends(current_owner)):
 class StartRequest(BaseModel):
     track: str = "agentic"
     language: str = "en-IN"
+    resume_text: str | None = None
+    github_repo: str | None = None
+    target_questions: int = 3
+    role: str = "Software Engineer"
 
 class AnswerRequest(BaseModel):
     session_id: str
@@ -203,7 +208,10 @@ def get_session(session_id: str, owner_id: str | None = None) -> Session:
     record = STORE.get_session(session_id, owner_id)
     if record is None:
         raise HTTPException(404, "Unknown session, expired session, or inaccessible account data.")
-    session = Session(**record['state'])
+    valid_fields = {f.name for f in fields(Session)}
+    filtered_state = {k: v for k, v in record['state'].items() if k in valid_fields}
+    session = Session(**filtered_state)
+    session._raw_state = record['state']
     session._version = record['version']
     return session
 
@@ -265,12 +273,38 @@ def start_session(request: StartRequest, user_id: str | None = Depends(current_o
     if request.track not in QUESTION_BANK or request.language not in SUPPORTED_LANGUAGES:
         raise HTTPException(422, "Unsupported track or language.")
     session_id = str(uuid.uuid4())
-    session = Session(track=request.track, language=request.language)
+    pending_q = None
+    pending_kind = "core"
+    pending_reason = ""
+    personalized_seed = None
+    if request.resume_text or request.github_repo:
+        from personalization import INTRODUCE_YOURSELF_QUESTION, personalize_question_seed
+        seed = personalize_question_seed(
+            track=request.track,
+            language=request.language,
+            resume_text=request.resume_text,
+            github_repo=request.github_repo,
+        )
+        if seed and "text" in seed:
+            seed[request.language] = seed["text"]
+        personalized_seed = seed
+        pending_q = INTRODUCE_YOURSELF_QUESTION
+        pending_kind = "introduction"
+        pending_reason = "Mandatory candidate self-introduction"
+
+    session = Session(
+        track=request.track,
+        language=request.language,
+        pending_question=pending_q,
+        pending_kind=pending_kind,
+        pending_reason=pending_reason,
+        personalized_seed=personalized_seed,
+    )
     STORE.create_session(session_id, asdict(session), user_id, SESSION_TTL_SECONDS)
     return {"session_id": session_id, "question": current_question(session),
             "question_number": 1, "total_questions": MAX_ANSWERS,
             "track": request.track, "language": request.language,
-            "question_kind": "core", "question_reason": ""}
+            "question_kind": pending_kind, "question_reason": pending_reason}
 
 
 @app.post("/api/answer")
@@ -293,27 +327,53 @@ def answer(request: AnswerRequest, user_id: str | None = Depends(current_owner))
     session.question_index += 1
     done = session.question_index == MAX_ANSWERS
     if session.question_index == 1:
-        question, reason, focus = select_followup(session.track, session.language, feedback)
-        session.pending_question = question
-        session.pending_kind = "adaptive"
-        session.pending_reason = reason
-        # In this three-question session the second question probes a specific
-        # missing dimension. Third question restores subject breadth.
-        feedback["follow_up"] = question[session.language]
-        feedback["follow_up_focus"] = focus
+        if session.personalized_seed:
+            session.pending_question = session.personalized_seed
+            session.pending_kind = "personalized_project"
+            session.pending_reason = "Technical question tailored to candidate GitHub project"
+            feedback["follow_up"] = session.pending_question.get(session.language) or session.pending_question.get("text")
+        else:
+            question, reason, focus = select_followup(session.track, session.language, feedback)
+            session.pending_question = question
+            session.pending_kind = "adaptive"
+            session.pending_reason = reason
+            feedback["follow_up"] = question[session.language]
+            feedback["follow_up_focus"] = focus
     elif session.question_index == 2:
-        session.pending_question = QUESTION_BANK[session.track][1]
-        session.pending_kind = "core"
-        session.pending_reason = "Returning to a separate topic for broader practice."
-        feedback["follow_up"] = session.pending_question[session.language]
+        if session.personalized_seed and session.personalized_seed.get("achievement_question"):
+            session.pending_question = session.personalized_seed["achievement_question"]
+            session.pending_kind = "personalized_achievement"
+            session.pending_reason = "Deep dive into candidate's demonstrated achievement from resume"
+            feedback["follow_up"] = session.pending_question.get(session.language) or session.pending_question.get("text")
+        else:
+            session.pending_question = QUESTION_BANK[session.track][1]
+            session.pending_kind = "core"
+            session.pending_reason = "Returning to a separate topic for broader practice."
+            feedback["follow_up"] = session.pending_question[session.language]
     else:
         session.pending_question = None
         session.pending_kind = "complete"
         session.pending_reason = ""
+    conversational_prompt = None
+    if not done:
+        from adaptive import generate_dynamic_followup
+        next_spec = current_question_spec(session)
+        spoken_turn, ack = generate_dynamic_followup(
+            transcript=text,
+            feedback=feedback,
+            next_question_spec=next_spec,
+            language=session.language,
+            question_index=session.question_index - 1,
+            track=session.track,
+        )
+        conversational_prompt = spoken_turn
+        feedback["conversational_acknowledgment"] = ack
+
     persist_session(request.session_id, session, user_id)
     return {"transcript": text, "feedback": feedback, "completed": done,
             "answered": session.question_index, "total_questions": MAX_ANSWERS,
             "next_question": current_question(session),
+            "conversational_prompt": conversational_prompt,
             "next_question_kind": session.pending_kind if not done else None,
             "next_question_reason": session.pending_reason if not done else None,
             "average_score": round(sum(a["feedback"]["score"] for a in session.answers) / len(session.answers))}
@@ -333,13 +393,29 @@ def report(session_id: str, user_id: str | None = Depends(current_owner)):
         for concept in answer_item["feedback"].get("missing_concepts", []):
             missing[concept] = missing.get(concept, 0) + 1
     priorities = [concept for concept, _ in sorted(missing.items(), key=lambda p: (-p[1], p[0]))][:5]
+
+    candidate_profile = {}
+    seed = session.personalized_seed or getattr(session, "_raw_state", {}).get("personalized_seed")
+    if seed:
+        prof = seed.get("resume_profile") or {}
+        github_prof = seed.get("github_profile") or {}
+        candidate_profile = {
+            "skills": prof.get("skills", []),
+            "education": prof.get("education", []),
+            "achievements": prof.get("achievements", []),
+            "github_project": github_prof.get("name", "") or seed.get("anchor_tech", ""),
+        }
+
     return {"title": "InterviewMirror AI practice report", "session_id": session_id,
-            "created": session.created, "track": TRACK_LABELS[session.track],
-            "language": SUPPORTED_LANGUAGES[session.language],
+            "created": session.created, "track": TRACK_LABELS.get(session.track, session.track),
+            "language": SUPPORTED_LANGUAGES.get(session.language, session.language),
             "answered": len(session.answers), "total_questions": MAX_ANSWERS,
             "average_score": round(sum(scores) / len(scores)) if scores else None,
             "dimension_averages": dimension_averages, "dimension_max": dimension_max,
             "review_priorities": priorities,
+            "candidate_profile": candidate_profile,
+            "achievements_evaluated": candidate_profile.get("achievements", []),
+            "github_repository_evaluated": candidate_profile.get("github_project", ""),
             "results": session.answers,
             "method": "risk_aware_rubric_v3",
             "note": "Uncalibrated transcript-only coaching. Risk flags are heuristic or model-generated, not a validated technical correctness or hiring assessment."}
@@ -496,8 +572,84 @@ def delete_session(session_id: str, user_id: str | None = Depends(current_owner)
     return {"deleted": True, "session_id": session_id}
 
 
+class CorrectionRequest(BaseModel):
+    question_index: int = Field(ge=0, le=2)
+    corrected_text: str = Field(min_length=3, max_length=4000)
+
+
+@app.post("/api/sessions/{session_id}/correct")
+def correct_session_answer(session_id: str, request: CorrectionRequest, user_id: str | None = Depends(current_owner)):
+    session = get_session(session_id, user_id)
+    if not (0 <= request.question_index < len(session.answers)):
+        raise HTTPException(422, "Invalid question index.")
+    ans = session.answers[request.question_index]
+    corrected = request.corrected_text.strip()
+    ans["edited_transcript"] = corrected
+    ans["transcript"] = corrected
+    fixed_index = 0 if request.question_index == 0 else 1 if request.question_index == 2 else None
+    spec = QUESTION_BANK[session.track][0] if request.question_index == 0 else (
+        QUESTION_BANK[session.track][1] if request.question_index == 2 else {"keywords": []}
+    )
+    if request.question_index == 1:
+        spec[session.language] = ans["question"]
+    new_feedback = evaluate_for_app(corrected, spec, session.language, session.track, fixed_index)
+    ans["feedback"] = new_feedback
+    persist_session(session_id, session, user_id)
+    return {"corrected": True, "answer": ans, "session_id": session_id}
+
+
+from metrics import SessionMetrics
+_GLOBAL_METRICS = SessionMetrics()
+
+
+@app.get("/api/metrics")
+def get_metrics(user_id: str | None = Depends(current_owner)):
+    base_summary = _GLOBAL_METRICS.summary()
+
+    # Aggregate across persisted sessions in SQLite STORE
+    try:
+        with STORE.connect() as db:
+            query = "SELECT state_json FROM interviews"
+            params = []
+            if user_id:
+                query += " WHERE owner_id = ?"
+                params.append(user_id)
+            rows = db.execute(query, params).fetchall()
+
+            stored_sessions = 0
+            for (state_json,) in rows:
+                try:
+                    state_obj = json.loads(state_json)
+                    m = state_obj.get("metrics")
+                    if not isinstance(m, dict):
+                        continue
+                    stored_sessions += 1
+                    base_summary["connection_successes"] += m.get("connection_successes", 0)
+                    base_summary["connection_failures"] += m.get("connection_failures", 0)
+                    base_summary["dropped_frames"] += m.get("dropped_frames", 0)
+                    base_summary["vad_errors"] += m.get("vad_errors", 0)
+                    base_summary["provider_stt_calls"] += m.get("provider_stt_calls", 0)
+                    base_summary["provider_tts_calls"] += m.get("provider_tts_calls", 0)
+                    base_summary["frames_sent"] += m.get("frames_sent", 0)
+                    base_summary["transcripts_received"] += m.get("transcripts_received", 0)
+
+                    counters = m.get("counters", {})
+                    if "counters" in base_summary and isinstance(counters, dict):
+                        for k, v in counters.items():
+                            if isinstance(v, (int, float)):
+                                base_summary["counters"][k] = base_summary["counters"].get(k, 0) + v
+                except Exception:
+                    continue
+            base_summary["aggregated_sessions"] = stored_sessions
+    except Exception as exc:
+        logger.warning("Error aggregating metrics from store: %s", exc)
+
+    return base_summary
+
+
 from ws_router import ws_router
 app.include_router(ws_router)
+
 
 
 

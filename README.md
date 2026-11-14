@@ -1,5 +1,7 @@
 # InterviewMirror AI — Gnani Voice Evaluation & Noise Upgrade
 
+See [the 2026-11-14 live first-answer fix and verification](docs/LIVE_TURN_FIX_2026-11-14.md) for the current hands-free streaming status and remaining device-level tests.
+
 **Build updated 10 Nov 2026 — account progress review, Prisma vocabulary hints and scoring regression controls.** An existing FastAPI + Prisma/Timbre technical interview practice system with implemented risk-aware scoring, opt-in speech enhancement, score regression gates and explicit voice-data consent.
 
 See [three-report reconciliation](docs/REPORT_RECONCILIATION.md) for findings verified against this source version. The Progress review view reads account-owned sessions from SQLite, including transcripts and feedback. The scorer now flags dense, disconnected keyword lists, but remains an uncalibrated practice aid. Prisma v2.5 word boosting is limited to single letter-only technical terms from the selected interview focus and still requires transcript review.

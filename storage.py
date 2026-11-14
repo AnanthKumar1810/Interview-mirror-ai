@@ -47,7 +47,7 @@ class SQLiteStore:
         with self.connect() as db:
             db.execute('PRAGMA journal_mode = WAL')
             version = db.execute('PRAGMA user_version').fetchone()[0]
-            if version > 1:
+            if version > 2:
                 raise RuntimeError('The database schema is newer than this application')
             if version == 0:
                 db.executescript('''
@@ -74,7 +74,33 @@ class SQLiteStore:
                         expires_at INTEGER NOT NULL
                     );
                     CREATE INDEX IF NOT EXISTS idx_revoked_expiry ON revoked_tokens(expires_at);
-                    PRAGMA user_version = 1;
+                    CREATE TABLE IF NOT EXISTS session_events (
+                        id TEXT PRIMARY KEY,
+                        session_id TEXT NOT NULL,
+                        trace_id TEXT,
+                        event_type TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        payload_json TEXT NOT NULL
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_events_session ON session_events(session_id);
+                    CREATE INDEX IF NOT EXISTS idx_events_timestamp ON session_events(timestamp);
+                    PRAGMA user_version = 2;
+                    COMMIT;
+                ''')
+            elif version == 1:
+                db.executescript('''
+                    BEGIN IMMEDIATE;
+                    CREATE TABLE IF NOT EXISTS session_events (
+                        id TEXT PRIMARY KEY,
+                        session_id TEXT NOT NULL,
+                        trace_id TEXT,
+                        event_type TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        payload_json TEXT NOT NULL
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_events_session ON session_events(session_id);
+                    CREATE INDEX IF NOT EXISTS idx_events_timestamp ON session_events(timestamp);
+                    PRAGMA user_version = 2;
                     COMMIT;
                 ''')
 
@@ -145,7 +171,42 @@ class SQLiteStore:
             else:
                 result = db.execute('DELETE FROM interviews WHERE id=? AND owner_id=?',
                                     (session_id, owner_id))
+            if result.rowcount == 1:
+                db.execute('DELETE FROM session_events WHERE session_id=?', (session_id,))
         return result.rowcount == 1
+
+    def log_event(self, session_id: str, event_type: str, payload: dict[str, Any], trace_id: str | None = None) -> str:
+        """Append an audit event to the session event log."""
+        event_id = str(uuid.uuid4())
+        now = int(time.time())
+        with self.connect() as db:
+            db.execute(
+                '''INSERT INTO session_events(id, session_id, trace_id, event_type, timestamp, payload_json)
+                   VALUES (?, ?, ?, ?, ?, ?)''',
+                (event_id, session_id, trace_id, event_type, now,
+                 json.dumps(payload, ensure_ascii=False, allow_nan=False))
+            )
+        return event_id
+
+    def get_session_events(self, session_id: str, limit: int = 100) -> list[dict[str, Any]]:
+        """Retrieve temporal session events for auditability and debugging."""
+        with self.connect() as db:
+            rows = db.execute(
+                '''SELECT id, session_id, trace_id, event_type, timestamp, payload_json
+                   FROM session_events WHERE session_id=? ORDER BY timestamp ASC, rowid ASC LIMIT ?''',
+                (session_id, min(limit, 500))
+            ).fetchall()
+        events = []
+        for r in rows:
+            events.append({
+                "id": r["id"],
+                "session_id": r["session_id"],
+                "trace_id": r["trace_id"],
+                "event_type": r["event_type"],
+                "timestamp": r["timestamp"],
+                "payload": json.loads(r["payload_json"]),
+            })
+        return events
 
     def recent_sessions(self, owner_id: str, limit: int = 20) -> list[dict]:
         with self.connect() as db:
@@ -180,5 +241,6 @@ class SQLiteStore:
         with self.connect() as db:
             sessions = db.execute('DELETE FROM interviews WHERE expires_at<=?', (now,)).rowcount
             tokens = db.execute('DELETE FROM revoked_tokens WHERE expires_at<=?', (now,)).rowcount
-        return {'expired_sessions': sessions, 'expired_tokens': tokens}
+            events = db.execute('DELETE FROM session_events WHERE session_id NOT IN (SELECT id FROM interviews)').rowcount
+        return {'expired_sessions': sessions, 'expired_tokens': tokens, 'cleaned_events': events}
 

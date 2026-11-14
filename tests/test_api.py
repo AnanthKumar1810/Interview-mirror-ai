@@ -57,6 +57,62 @@ def test_full_three_question_interview():
     assert client.post('/api/answer', json={'session_id': sid, 'text': 'more feedback'}).status_code == 409
 
 
+def test_personalized_interview_with_achievements_evaluation():
+    resume = (
+        "B.Tech Computer Science graduate.\n"
+        "Winner of National Hackathon 2024 with 1st prize.\n"
+        "Built bug-fixer: automated SWE-bench repair in Python.\n"
+        "Optimized repair pipeline latency by 50 percent across 100 benchmark tasks.\n"
+    )
+    session = client.post('/api/session', json={
+        'track': 'agentic',
+        'language': 'en-IN',
+        'resume_text': resume,
+        'github_repo': 'AnanthKumar1810/bug-fixer'
+    })
+    assert session.status_code == 200
+    data = session.json()
+    sid = data['session_id']
+    # Q1: Introduction
+    assert data['question_kind'] == 'introduction'
+    assert 'introduce' in data['question'].lower()
+
+    # Answer Q1
+    ans1 = client.post('/api/answer', json={
+        'session_id': sid,
+        'text': 'Hello, I am a computer science graduate passionate about building autonomous software engineering agents.'
+    }).json()
+    assert ans1['answered'] == 1
+    # Q2: Tailored project
+    assert ans1['next_question_kind'] == 'personalized_project'
+    assert 'bug-fixer' in ans1['next_question'] or 'Python' in ans1['next_question']
+
+    # Answer Q2
+    ans2 = client.post('/api/answer', json={
+        'session_id': sid,
+        'text': 'In bug-fixer, I developed a Python tool agent that reproduces bugs using Docker containers with approval guardrails.'
+    }).json()
+    assert ans2['answered'] == 2
+    # Q3: Personalized achievement deep-dive
+    assert ans2['next_question_kind'] == 'personalized_achievement'
+    assert 'Hackathon' in ans2['next_question'] or 'Winner' in ans2['next_question'] or 'milestone' in ans2['next_question']
+
+    # Answer Q3
+    ans3 = client.post('/api/answer', json={
+        'session_id': sid,
+        'text': 'Our technical decision for the hackathon was an AST patch filter. We parallelized tests, which reduced latency by 50 percent and won 1st prize.'
+    }).json()
+    assert ans3['answered'] == 3
+    assert ans3['completed'] is True
+
+    # Report evaluation includes candidate profile and achievements
+    rep = client.get(f'/api/report/{sid}').json()
+    assert rep['answered'] == 3
+    assert len(rep['achievements_evaluated']) >= 1
+    assert any('Hackathon' in a or 'Winner' in a for a in rep['achievements_evaluated'])
+    assert 'bug-fixer' in rep['github_repository_evaluated'] or 'Python' in rep['github_repository_evaluated']
+
+
 def test_invalid_inputs_and_unknown_session():
     assert client.post('/api/session', json={'track': 'other', 'language': 'en-IN'}).status_code == 422
     assert client.post('/api/session', json={'track': 'ai', 'language': 'xx'}).status_code == 422

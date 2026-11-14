@@ -169,3 +169,33 @@ def test_advance_and_evaluation_flow():
     # Advance after completion raises RuntimeError
     with pytest.raises(RuntimeError):
         sm.advance("Another answer")
+
+
+def test_end_interview_early():
+    sm = InterviewStateMachine(track="software", language="en-IN")
+    sm.transition(InterviewState.asking)
+    sm.advance("I fixed a concurrency bug using mutex locks and unit tests.")
+    assert sm.question_index == 1
+    assert sm.is_complete is False
+
+    # Candidate ends early
+    state = sm.end_interview()
+    assert state == InterviewState.completed
+    assert sm.is_complete is True
+
+
+def test_correct_answer_recomputes_feedback():
+    sm = InterviewStateMachine(track="ai", language="en-IN")
+    sm.advance("I trained a model with PyTorch.")
+    orig_record = sm.answers[0]
+    orig_score = orig_record["feedback"]["score"]
+
+    # Correct transcript post-interview
+    updated = sm.correct_answer(0, "I built a machine learning classification model with PyTorch, split the dataset, and measured precision and recall.")
+    assert updated["edited_transcript"] == "I built a machine learning classification model with PyTorch, split the dataset, and measured precision and recall."
+    assert updated["feedback"]["score"] >= orig_score
+
+    # Invalid index
+    with pytest.raises(IndexError):
+        sm.correct_answer(5, "out of bounds")
+
