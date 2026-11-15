@@ -159,6 +159,11 @@ function setQuestion(question, number, kind = 'core', reason = '') {
 async function startHandsFreeInterview() {
   if (state.isHandsFree) return;
 
+  if (!state.live) {
+    toast('Live voice is unavailable. Connect Gnani speech access before starting an interview.');
+    return;
+  }
+
   const consentBox = $('audio-consent');
   if (!consentBox || !consentBox.checked) {
     toast('Audio consent is required. Please check the consent box to begin.');
@@ -841,20 +846,24 @@ async function init() {
   if ($('preview-btn')) $('preview-btn').addEventListener('click', previewRecording);
   if ($('save-record-btn')) $('save-record-btn').addEventListener('click', downloadRecording);
 
-  // Consent checkbox controls start button state
+  // Start requires both a configured voice service and microphone consent.
   const consentBox = $('audio-consent');
+  const syncStartAvailability = () => {
+    const startButton = $('start-btn');
+    startButton.disabled = !state.live || !consentBox?.checked;
+    startButton.title = state.live ? '' : 'Live voice requires Gnani speech access';
+  };
   if (consentBox) {
-    consentBox.addEventListener('change', () => {
-      $('start-btn').disabled = !consentBox.checked;
-    });
-    $('start-btn').disabled = !consentBox.checked;
+    consentBox.addEventListener('change', syncStartAvailability);
   }
+  syncStartAvailability();
 
   // Load status
   try {
     const res = await api('/api/status');
     const data = await res.json();
     state.live = data.gnani_live;
+    syncStartAvailability();
     state.authRequired = !!data.auth_required;
     $('auth-panel').hidden = !state.authRequired;
 
@@ -863,11 +872,11 @@ async function init() {
     $('side-dot').classList.toggle('live', state.live);
 
     $('mode-banner').classList.toggle('live', state.live);
-    $('mode-heading').textContent = state.live ? 'Voice service ready' : 'Preview mode · live voice unavailable';
+    $('mode-heading').textContent = state.live ? 'Voice service configured' : 'Preview mode · live voice unavailable';
     $('mode-description').textContent = state.live
-      ? 'Gnani Prisma and Timbre are connected. Your coach can speak and listen automatically.'
+      ? 'Gnani speech access is set up. The live connection is checked when you start.'
       : 'You can explore the app and test your microphone locally. Connect Gnani access to use the live spoken interview.';
-    $('mode-tag').textContent = state.live ? 'VOICE READY' : 'PREVIEW';
+    $('mode-tag').textContent = state.live ? 'VOICE SET UP' : 'PREVIEW';
   } catch (err) {
     $('mode-heading').textContent = 'Backend is offline';
     $('mode-description').textContent = err.message;
