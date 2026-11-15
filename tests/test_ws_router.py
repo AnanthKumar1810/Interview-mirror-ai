@@ -308,3 +308,32 @@ def test_transcript_correction_endpoint():
     report = client.get(f"/api/report/{sid}").json()
     assert len(report["results"]) == 1
     assert "classification" in report["results"][0]["transcript"]
+
+
+@pytest.mark.asyncio
+async def test_streaming_required_never_switches_to_delayed_rest(monkeypatch):
+    ctx = ws_router._SessionContext(
+        session_id="streaming-required-test", track="software", language="en-IN",
+        stt_model="prisma-v2.5", consent=True, require_streaming=True,
+    )
+    fallback_called = False
+    messages = []
+
+    async def unavailable(_ctx):
+        raise RuntimeError("streaming unavailable")
+
+    async def fallback(_ctx):
+        nonlocal fallback_called
+        fallback_called = True
+
+    async def capture(_ctx, message):
+        messages.append(message)
+
+    monkeypatch.setattr(ws_router, "_live_prisma_stt", unavailable)
+    monkeypatch.setattr(ws_router, "_fallback_vad_stt", fallback)
+    monkeypatch.setattr(ws_router, "_send_json", capture)
+    await ws_router._gnani_stt_events(ctx)
+
+    assert fallback_called is False
+    assert ctx.active is False
+    assert any(message["type"] == "error" and message["code"] == "stt_connection_error" for message in messages)

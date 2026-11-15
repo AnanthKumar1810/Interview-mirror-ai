@@ -385,7 +385,7 @@ def report(session_id: str, user_id: str | None = Depends(current_owner)):
     scores = [item["feedback"]["score"] for item in session.answers]
     dimension_max = {"relevance": 25, "technical_coverage": 35, "clarity": 20, "evidence": 20}
     dimension_averages = {
-        key: round(sum(a["feedback"]["dimensions"][key] for a in session.answers) / len(session.answers), 1)
+        key: round(sum(a.get("feedback", {}).get("dimensions", {}).get(key, 0) for a in session.answers) / len(session.answers), 1)
         for key in dimension_max
     } if session.answers else {}
     missing = {}
@@ -418,7 +418,7 @@ def report(session_id: str, user_id: str | None = Depends(current_owner)):
             "github_repository_evaluated": candidate_profile.get("github_project", ""),
             "results": session.answers,
             "method": "risk_aware_rubric_v3",
-            "note": "Uncalibrated transcript-only coaching. Risk flags are heuristic or model-generated, not a validated technical correctness or hiring assessment."}
+            "note": "Uncalibrated transcript-only coaching. With the current STT/TTS key, feedback uses a heuristic rubric; no Evon semantic evaluation or validated hiring assessment is available."}
 
 
 async def _verified_wav_upload(audio: UploadFile) -> tuple[bytes, dict]:

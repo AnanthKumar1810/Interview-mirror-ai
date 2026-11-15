@@ -1,5 +1,8 @@
 # InterviewMirror AI — Gnani Voice Evaluation & Noise Upgrade
 
+**New ClearView realtime frontend:** see [frontend/README.md](frontend/README.md)
+for the integrated Start → streaming transcript → automatic next question flow.
+
 See [the 2026-11-14 live first-answer fix and verification](docs/LIVE_TURN_FIX_2026-11-14.md) for the current hands-free streaming status and remaining device-level tests.
 
 **Build updated 10 Nov 2026 — account progress review, Prisma vocabulary hints and scoring regression controls.** An existing FastAPI + Prisma/Timbre technical interview practice system with implemented risk-aware scoring, opt-in speech enhancement, score regression gates and explicit voice-data consent.

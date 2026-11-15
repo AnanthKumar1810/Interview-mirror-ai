@@ -101,6 +101,7 @@ class _SessionContext:
         store: Any = None,
         owner_id: str | None = None,
         endpointing_policy: str = "fixed",
+        require_streaming: bool = False,
         initial_seed: Optional[dict] = None,
         max_questions: int = 3,
         role: str = "Software Engineer",
@@ -112,6 +113,7 @@ class _SessionContext:
         self.store = store
         self.owner_id = owner_id
         self.endpointing_policy = endpointing_policy
+        self.require_streaming = require_streaming
         self.session_version = 0
 
         self.state_machine = InterviewStateMachine(
@@ -698,7 +700,7 @@ async def _live_prisma_stt(ctx: _SessionContext) -> None:
                                 ctx.accumulated_segments.append(text)
                                 await _send_json(ctx, TranscriptMessage(
                                     text=" ".join(ctx.accumulated_segments),
-                                    is_final=False,
+                                    is_final=True,
                                     source="gnani_prisma",
                                     provider_latency_ms=evt.latency_ms,
                                 ).__dict__)
@@ -758,6 +760,8 @@ async def _gnani_stt_events(ctx: _SessionContext) -> None:
             await _live_prisma_stt(ctx)
             return
         except Exception as ws_err:
+            if ctx.require_streaming:
+                raise RuntimeError(f"Live Prisma streaming is unavailable: {ws_err}") from ws_err
             logger.info("Prisma WS streaming unavailable (%s); bridging via verified Prisma v2.5 REST", ws_err)
 
         await _fallback_vad_stt(ctx)
@@ -1137,6 +1141,7 @@ async def interview_ws(ws: WebSocket) -> None:
     stt_model = getattr(init, "stt_model", "prisma-v2.5")
     requested_session_id = getattr(init, "session_id", None)
     endpointing_policy = getattr(init, "endpointing_policy", "fixed")
+    require_streaming = getattr(init, "require_streaming", False)
 
     # Authentication and Session Ownership Verification
     from auth_service import auth_required, parse_token
@@ -1233,6 +1238,7 @@ async def interview_ws(ws: WebSocket) -> None:
             store=STORE,
             owner_id=owner_id,
             endpointing_policy=endpointing_policy,
+            require_streaming=require_streaming,
             initial_seed=initial_seed,
             max_questions=target_questions,
             role=role,

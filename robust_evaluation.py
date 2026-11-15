@@ -153,10 +153,6 @@ def evaluate_robust(
 
 def evaluate_for_app(transcript: str, question: dict, language: str,
                      track: str | None = None, index: int | None = None) -> dict:
-    """Default safe rubric; LLM review is explicit via IM_SEMANTIC_JUDGE=ollama."""
-    judge = None
-    if os.getenv("IM_SEMANTIC_JUDGE", "off").strip().lower() == "ollama":
-        from semantic_judge import judge_with_ollama
-        judge = judge_with_ollama
-    return evaluate_robust(transcript, question, language, track, index, semantic_judge=judge)
+    """Live rubric uses no third-party language model while Evon is unavailable."""
+    return evaluate_robust(transcript, question, language, track, index, semantic_judge=None)
 

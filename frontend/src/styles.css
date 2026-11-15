@@ -1,0 +1,238 @@
+/*
+ * Tailwind v4 entry: config lives here, with no tailwind.config.js or PostCSS plugin.
+ * Keep every @import in this top block. Web fonts load via <link> in src/routes/__root.tsx.
+ */
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * InterviewMirror design system — "calm night studio".
+ * Deep ink surfaces, periwinkle-blue voice, teal for evidence and success.
+ */
+
+@theme inline {
+  --font-sans: "Manrope", "Noto Sans Telugu", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora", "Manrope", "Noto Sans Telugu", "Noto Sans Devanagari", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-elevated: var(--elevated);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-glow: var(--shadow-glow-value);
+  --shadow-card: var(--shadow-card-value);
+}
+
+:root,
+.dark {
+  --radius: 0.875rem;
+
+  --background: oklch(0.155 0.026 262);
+  --foreground: oklch(0.975 0.006 250);
+  --card: oklch(0.198 0.03 262);
+  --card-foreground: oklch(0.975 0.006 250);
+  --elevated: oklch(0.24 0.034 262);
+  --popover: oklch(0.21 0.032 262);
+  --popover-foreground: oklch(0.975 0.006 250);
+
+  --primary: oklch(0.7 0.15 264);
+  --primary-foreground: oklch(0.16 0.03 264);
+  --primary-soft: oklch(0.7 0.15 264 / 14%);
+  --secondary: oklch(0.255 0.034 262);
+  --secondary-foreground: oklch(0.94 0.01 250);
+  --muted: oklch(0.235 0.03 262);
+  --muted-foreground: oklch(0.72 0.03 256);
+  --accent: oklch(0.27 0.04 262);
+  --accent-foreground: oklch(0.975 0.006 250);
+
+  --teal: oklch(0.82 0.13 178);
+  --teal-soft: oklch(0.82 0.13 178 / 14%);
+  --success: oklch(0.76 0.15 158);
+  --success-soft: oklch(0.76 0.15 158 / 14%);
+  --warning: oklch(0.83 0.13 75);
+  --warning-soft: oklch(0.83 0.13 75 / 15%);
+  --destructive: oklch(0.7 0.16 15);
+  --destructive-soft: oklch(0.7 0.16 15 / 15%);
+  --destructive-foreground: oklch(0.98 0.005 250);
+
+  --border: oklch(0.31 0.035 262);
+  --input: oklch(0.31 0.035 262);
+  --ring: oklch(0.7 0.15 264);
+
+  --chart-1: oklch(0.7 0.15 264);
+  --chart-2: oklch(0.82 0.13 178);
+  --chart-3: oklch(0.83 0.13 75);
+  --chart-4: oklch(0.76 0.15 158);
+  --chart-5: oklch(0.7 0.16 15);
+
+  --sidebar: oklch(0.175 0.028 262);
+  --sidebar-foreground: oklch(0.9 0.012 250);
+  --sidebar-primary: oklch(0.7 0.15 264);
+  --sidebar-primary-foreground: oklch(0.16 0.03 264);
+  --sidebar-accent: oklch(0.7 0.15 264 / 14%);
+  --sidebar-accent-foreground: oklch(0.975 0.006 250);
+  --sidebar-border: oklch(0.28 0.032 262);
+  --sidebar-ring: oklch(0.7 0.15 264);
+
+  --gradient-brand: linear-gradient(135deg, oklch(0.7 0.15 264), oklch(0.82 0.13 178));
+  --gradient-hero:
+    radial-gradient(60% 50% at 75% 20%, oklch(0.7 0.15 264 / 18%), transparent 70%),
+    radial-gradient(40% 40% at 10% 80%, oklch(0.82 0.13 178 / 10%), transparent 70%);
+  --gradient-orb: radial-gradient(circle at 35% 30%, oklch(0.9 0.08 230), oklch(0.7 0.15 264) 45%, oklch(0.45 0.14 268) 100%);
+  --shadow-glow-value: 0 0 80px oklch(0.7 0.15 264 / 30%);
+  --shadow-card-value: 0 10px 30px -12px oklch(0.08 0.02 262 / 70%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+  }
+}
+
+@utility bg-gradient-brand {
+  background-image: var(--gradient-brand);
+}
+@utility bg-gradient-hero {
+  background-image: var(--gradient-hero);
+}
+@utility text-gradient-brand {
+  background-image: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-teal);
+}
+@utility surface {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card-value);
+}
+
+/* ---------- Voice orb ---------- */
+.orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--orb-size, 180px);
+  height: var(--orb-size, 180px);
+}
+.orb__core {
+  width: 58%;
+  height: 58%;
+  border-radius: 9999px;
+  background: var(--gradient-orb);
+  box-shadow: var(--shadow-glow-value);
+  animation: orb-breathe 4s ease-in-out infinite;
+}
+.orb__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid oklch(0.7 0.15 264 / 35%);
+  animation: orb-ripple 3.2s ease-out infinite;
+}
+.orb__ring:nth-child(2) { animation-delay: 1.05s; }
+.orb__ring:nth-child(3) { animation-delay: 2.1s; }
+
+.orb[data-state="listening"] .orb__ring { border-color: oklch(0.82 0.13 178 / 40%); animation-duration: 4.5s; }
+.orb[data-state="answering"] .orb__core { animation: orb-talk 0.9s ease-in-out infinite; }
+.orb[data-state="answering"] .orb__ring { border-color: oklch(0.82 0.13 178 / 55%); animation-duration: 1.8s; }
+.orb[data-state="speaking"] .orb__core { animation: orb-talk 1.2s ease-in-out infinite; }
+.orb[data-state="thinking"] .orb__core { animation: orb-think 1.4s linear infinite; }
+.orb[data-state="thinking"] .orb__ring { border-style: dashed; animation: orb-spin 6s linear infinite; opacity: 0.6; }
+.orb[data-state="idle"] .orb__ring { animation: none; opacity: 0.25; }
+
+@keyframes orb-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes orb-talk { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.1); } 60% { transform: scale(0.97); } }
+@keyframes orb-think { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(40deg); } }
+@keyframes orb-ripple { 0% { transform: scale(0.6); opacity: 0.9; } 100% { transform: scale(1.15); opacity: 0; } }
+@keyframes orb-spin { to { transform: rotate(360deg); } }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.animate-fade-up { animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

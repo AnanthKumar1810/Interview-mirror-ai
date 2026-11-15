@@ -95,6 +95,7 @@ class SessionStart(ProtocolMessage):
     github_repo: Optional[str] = None
     target_questions: int = 3
     role: str = "Software Engineer"
+    require_streaming: bool = False
 
 
 @dataclass
