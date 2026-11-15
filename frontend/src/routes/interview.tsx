@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Clock, Loader2, Mic, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,7 @@ function InterviewPage() {
     return () => window.clearInterval(timer);
   }, [live]);
 
-  const finish = async () => {
+  const finish = useCallback(async () => {
     if (!live || ending) return;
     setEnding(true);
     endRealtime();
@@ -38,11 +38,11 @@ function InterviewPage() {
     disconnectRealtime();
     await navigate({ to: "/app/report/$id", params: { id: live.id } });
     actions.setLive(null);
-  };
+  }, [live, ending, navigate]);
 
   useEffect(() => {
     if (live && realtime.rawState === "completed" && !ending) void finish();
-  }, [live, realtime.rawState, ending]);
+  }, [live, realtime.rawState, ending, finish]);
 
   if (!live)
     return (

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Loader2, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel, PageHeader } from "@/components/im/bits";
@@ -44,6 +44,8 @@ function ReportPage() {
   const { id } = Route.useParams();
   const live = useAppStore((s) => s.live);
   const setup = useAppStore((s) => s.setup);
+  const currentContext = useRef({ live, setup });
+  currentContext.current = { live, setup };
   const [report, setReport] = useState<BackendReport | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -60,6 +62,7 @@ function ReportPage() {
       })
       .then((data) => {
         if (!active) return;
+        const { live: currentLive, setup: currentSetup } = currentContext.current;
         setReport(data);
         const domainId =
           (
@@ -68,11 +71,11 @@ function ReportPage() {
               "Machine Learning": "ai_ml",
               "Software Engineering": "software_eng",
             } as Record<string, string>
-          )[data.track] ?? setup.domainId;
+          )[data.track] ?? currentSetup.domainId;
         const languageCode: LangCode =
           ({ Telugu: "te-IN", Hindi: "hi-IN", English: "en-IN" } as Record<string, LangCode>)[
             data.language
-          ] ?? setup.languageCode;
+          ] ?? currentSetup.languageCode;
         const turns: Turn[] = data.results.map((answer, index) => ({
           turnIndex: index + 1,
           topic: `Question ${index + 1}`,
@@ -93,16 +96,18 @@ function ReportPage() {
           id,
           domainId,
           domainName: getDomain(domainId).name,
-          targetRole: setup.targetRole || "Candidate",
+          targetRole: currentSetup.targetRole || "Candidate",
           languageCode,
           languageLabel: getLanguage(languageCode).label,
-          difficulty: setup.difficulty || "Intermediate",
+          difficulty: currentSetup.difficulty || "Intermediate",
           questionTarget: data.total_questions,
           questionsCompleted: data.answered,
           date: new Date(data.created).toLocaleString(),
-          durationSeconds: live ? Math.round((Date.now() - live.startedAt) / 1000) : 0,
-          durationFormatted: live
-            ? formatDuration(Math.round((Date.now() - live.startedAt) / 1000))
+          durationSeconds: currentLive
+            ? Math.round((Date.now() - currentLive.startedAt) / 1000)
+            : 0,
+          durationFormatted: currentLive
+            ? formatDuration(Math.round((Date.now() - currentLive.startedAt) / 1000))
             : "—",
           status: data.answered >= data.total_questions ? "Completed" : "Partial",
           overallScore: data.average_score ?? 0,
