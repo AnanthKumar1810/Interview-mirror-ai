@@ -16,7 +16,7 @@ import unicodedata
 from pathlib import Path
 
 from audio_tools import inspect_pcm16_wav
-from gnani import GnaniClient
+from gnani import GnaniClient, GnaniError
 from speech_enhancement import enhance_pcm16_wav
 
 
@@ -69,23 +69,43 @@ def run_live(manifest: dict, base_dir: Path, max_clips: int) -> dict:
             raw = audio_path.read_bytes()
             inspect_pcm16_wav(raw)
             language = case['language']
+            # Keep source language/provenance separate from a provider-supported
+            # code. For synthetic en-US fixtures the caller may explicitly map
+            # the speech to Gnani's documented en-IN option.
+            provider_language = case.get('provider_language', language)
             reference = case['reference_transcript']
-            item = {'id': case['id'], 'language': language, 'durations_ms': {}, 'wer': {}}
+            item = {'id': case['id'], 'language': language,
+                    'provider_language': provider_language,
+                    'durations_ms': {}, 'wer': {}, 'errors': {}}
             for mode in ('off', 'spectral'):
                 provider_wav, _ = enhance_pcm16_wav(raw, mode=mode)
                 start = time.perf_counter()
-                transcript = client.transcribe(provider_wav, language)['transcript']
+                try:
+                    transcript = client.transcribe(provider_wav, provider_language)['transcript']
+                except GnaniError as exc:
+                    item['durations_ms'][mode] = round((time.perf_counter() - start) * 1000, 1)
+                    item['wer'][mode] = None
+                    item['errors'][mode] = str(exc)
+                    continue
                 item['durations_ms'][mode] = round((time.perf_counter() - start) * 1000, 1)
                 item['wer'][mode] = word_error_rate(reference, transcript)
             results.append(item)
     finally:
         client.client.close()
+    def mean_metric(mode: str, metric: str) -> float | None:
+        values = [r[metric][mode] for r in results if r[metric].get(mode) is not None]
+        return round(statistics.mean(values), 4 if metric == 'wer' else 1) if values else None
+
+    failures = sum(len(r['errors']) for r in results)
     return {
         'n_clips': len(results), 'provider_calls': len(results) * 2,
-        'mean_wer_raw': round(statistics.mean(r['wer']['off'] for r in results), 4),
-        'mean_wer_spectral': round(statistics.mean(r['wer']['spectral'] for r in results), 4),
-        'mean_latency_raw_ms': round(statistics.mean(r['durations_ms']['off'] for r in results), 1),
-        'mean_latency_spectral_ms': round(statistics.mean(r['durations_ms']['spectral'] for r in results), 1),
+        'provider_failures': failures,
+        'wer_n_raw': sum(r['wer']['off'] is not None for r in results),
+        'wer_n_spectral': sum(r['wer']['spectral'] is not None for r in results),
+        'mean_wer_raw': mean_metric('off', 'wer'),
+        'mean_wer_spectral': mean_metric('spectral', 'wer'),
+        'mean_latency_raw_ms': mean_metric('off', 'durations_ms'),
+        'mean_latency_spectral_ms': mean_metric('spectral', 'durations_ms'),
         'cases': results,
         'limitations': [
             'WER is whitespace-token based; interpret results cautiously for Telugu and code-mixed speech.',

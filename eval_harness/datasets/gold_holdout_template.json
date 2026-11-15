@@ -1,0 +1,26 @@
+{
+  "dataset_id": "interviewmirror-gold-holdout-v1",
+  "version": "1.0.0",
+  "status": "incomplete",
+  "gold_examples_count": 0,
+  "provenance_policy": "Zero synthetic examples permitted. Genuine human evaluations await participant onboarding and blinded multi-reviewer adjudication.",
+  "annotation_protocol": {
+    "min_independent_reviewers": 2,
+    "adjudication_trigger": "score_delta > 15.0 or verdict_disagreement",
+    "rubric_dimensions": {
+      "concept_coverage": { "min": 0, "max": 35, "description": "Technical domain concept coverage and factual accuracy" },
+      "relevance_completeness": { "min": 0, "max": 25, "description": "Direct responsiveness to prompt and requirement coverage" },
+      "clarity_coherence": { "min": 0, "max": 20, "description": "Structured explanation, articulation and terminological precision" },
+      "evidence_tradeoffs": { "min": 0, "max": 20, "description": "Specific project examples, quantifiable metrics and trade-off analysis" }
+    },
+    "verdict_categories": ["correct", "partial", "incorrect", "uncertain"],
+    "leakage_guard": "Bipartite graph connected-component partition over participant_id and question_family_id"
+  },
+  "compliance": {
+    "explicit_consent_required": true,
+    "pii_redaction_required": true,
+    "retention_period_days": 365,
+    "deletion_right_supported": true
+  },
+  "cases": []
+}

@@ -1,0 +1,201 @@
+{
+  "dataset_id": "calibration-benchmark-v3",
+  "version": "3.0.0",
+  "description": "Comprehensive benchmark dataset covering strong, weak, partially correct, contradictory, misconception, adversarial, code-mixed, and conversational intent cases for Plan X+ V3.",
+  "cases": [
+    {
+      "id": "bench_sw_strong_async",
+      "track": "software",
+      "question_index": 0,
+      "language": "en-IN",
+      "category": "strong",
+      "answer": "I investigated a connection starvation bug in our FastAPI service. Using asyncio with asyncpg connection pooling, I resolved the blocking database bottleneck. I verified the fix under a 500 rps load test using k6, reducing p99 latency from 1200ms to 45ms.",
+      "expected_band": "high",
+      "expected_risks": []
+    },
+    {
+      "id": "bench_sw_asyncio_cpu_misconception",
+      "track": "software",
+      "question_index": 0,
+      "language": "en-IN",
+      "category": "misconception",
+      "answer": "I used asyncio in Python because async await runs in parallel across all CPU cores automatically, so our heavy numerical calculations never block.",
+      "expected_band": "low",
+      "expected_risks": ["asyncio_cpu_parallel_misconception"]
+    },
+    {
+      "id": "bench_sw_docker_vm_misconception",
+      "track": "software",
+      "question_index": 1,
+      "language": "en-IN",
+      "category": "misconception",
+      "answer": "We deployed using Docker because each container is a full virtual machine with a hardware hypervisor running its own independent guest OS kernel.",
+      "expected_band": "low",
+      "expected_risks": ["docker_virtual_machine_misconception"]
+    },
+    {
+      "id": "bench_sw_irrelevant",
+      "track": "software",
+      "question_index": 0,
+      "language": "en-IN",
+      "category": "irrelevant",
+      "answer": "I like playing chess and listening to classical music on weekends.",
+      "expected_band": "zero",
+      "expected_risks": []
+    },
+    {
+      "id": "bench_sw_partial",
+      "track": "software",
+      "question_index": 0,
+      "language": "en-IN",
+      "category": "partial",
+      "answer": "We had a bug where the database failed, so I restarted the server and it worked again.",
+      "expected_band": "mid_low",
+      "expected_risks": []
+    },
+    {
+      "id": "bench_sw_keyword_stuffing",
+      "track": "software",
+      "question_index": 1,
+      "language": "en-IN",
+      "category": "adversarial",
+      "answer": "FastAPI redis postgresql docker kubernetes asyncio load cache queue database monitor log timeout retry circuit idempotency. FastAPI redis postgresql docker kubernetes asyncio load cache queue database monitor log timeout retry circuit idempotency.",
+      "expected_band": "capped",
+      "expected_risks": ["keyword_stuffing"]
+    },
+    {
+      "id": "bench_sw_te_codemix_strong",
+      "track": "software",
+      "question_index": 0,
+      "language": "te-IN",
+      "category": "code_mixed_strong",
+      "answer": "మా API లో ఒక critical bug వచ్చింది. అసలు కారణం Fastapi లో database connection pool exhaust అయింది. నేను async driver implement చేసి, 20 regression tests ద్వారా verify చేశాను.",
+      "expected_band": "high",
+      "expected_risks": []
+    },
+    {
+      "id": "bench_sw_hi_codemix_strong",
+      "track": "software",
+      "question_index": 0,
+      "language": "hi-IN",
+      "category": "code_mixed_strong",
+      "answer": "हमारे production service में latency spike हुआ था। मैंने PostgreSQL query को optimize किया और Redis caching implement की, फिर k6 load test से 50ms latency verify की.",
+      "expected_band": "high",
+      "expected_risks": []
+    },
+    {
+      "id": "bench_agentic_strong",
+      "track": "agentic",
+      "question_index": 0,
+      "language": "en-IN",
+      "category": "strong",
+      "answer": "I built an autonomous agent using LangGraph with restricted tool execution boundaries. Because generative tools can hallucinate, I enforced sandbox validation and required human confirmation before mutating files. We verified reliability across 25 benchmark tasks.",
+      "expected_band": "high",
+      "expected_risks": []
+    },
+    {
+      "id": "bench_agentic_perfect_accuracy_claim",
+      "track": "agentic",
+      "question_index": 0,
+      "language": "en-IN",
+      "category": "misconception",
+      "answer": "Our AI agent tool workflow achieved 100 percent perfect accuracy and will never make another mistake in production.",
+      "expected_band": "low",
+      "expected_risks": ["absolute_perfection_claim"]
+    },
+    {
+      "id": "bench_ai_metric_confusion",
+      "track": "ai",
+      "question_index": 1,
+      "language": "en-IN",
+      "category": "misconception",
+      "answer": "I evaluated model performance where precision equals true positives divided by true positives plus false negatives.",
+      "expected_band": "low",
+      "expected_risks": ["known_metric_confusion"]
+    },
+    {
+      "id": "bench_ai_data_leakage",
+      "track": "ai",
+      "question_index": 1,
+      "language": "en-IN",
+      "category": "misconception",
+      "answer": "To get the highest accuracy score on the test set, we trained on the test data before evaluation.",
+      "expected_band": "low",
+      "expected_risks": ["data_leakage_claim"]
+    },
+    {
+      "id": "bench_ai_strong_mlops",
+      "track": "ai",
+      "question_index": 1,
+      "language": "en-IN",
+      "category": "strong",
+      "answer": "I split the dataset with stratified 80-10-10 train-val-test partitions, avoiding data leakage. I tuned gradient descent learning rates and achieved an F1 score of 0.88 on the held-out test split, comparing against a baseline logistic model.",
+      "expected_band": "high",
+      "expected_risks": []
+    },
+    {
+      "id": "bench_ai_te_strong",
+      "track": "ai",
+      "question_index": 1,
+      "language": "te-IN",
+      "category": "code_mixed_strong",
+      "answer": "నేను dataset ని train మరియు test splits గా విభజించాను. Precision మరియు recall metrics కొలిచి, gradient descent hyperparameters ని సరిచేశాను. 15 validation trials లో ఫలితం నిలకడగా వచ్చింది.",
+      "expected_band": "high",
+      "expected_risks": []
+    },
+    {
+      "id": "bench_dialogue_clarification_en",
+      "track": "software",
+      "question_index": 0,
+      "language": "en-IN",
+      "category": "dialogue_clarification",
+      "answer": "Could you please clarify what specific architectural constraints you are asking about?",
+      "expected_intent": "clarification"
+    },
+    {
+      "id": "bench_dialogue_clarification_te",
+      "track": "software",
+      "question_index": 0,
+      "language": "te-IN",
+      "category": "dialogue_clarification",
+      "answer": "దయచేసి ఈ ప్రశ్న గురించి కాస్త మరింత వివరణ ఇవ్వగలరా?",
+      "expected_intent": "clarification"
+    },
+    {
+      "id": "bench_dialogue_repeat_hi",
+      "track": "ai",
+      "question_index": 0,
+      "language": "hi-IN",
+      "category": "dialogue_repeat",
+      "answer": "कृपया सवाल दोबारा बताइए",
+      "expected_intent": "repeat"
+    },
+    {
+      "id": "bench_dialogue_uncertainty_en",
+      "track": "agentic",
+      "question_index": 0,
+      "language": "en-IN",
+      "category": "dialogue_uncertainty",
+      "answer": "I'm not sure about that particular distributed consensus mechanism.",
+      "expected_intent": "uncertainty"
+    },
+    {
+      "id": "bench_dialogue_skip_te",
+      "track": "software",
+      "question_index": 0,
+      "language": "te-IN",
+      "category": "dialogue_skip",
+      "answer": "ఈ ప్రశ్నను స్కిప్ చేసి తర్వాతి ప్రశ్నకు వెళ్దాం",
+      "expected_intent": "skip"
+    },
+    {
+      "id": "bench_dialogue_skip_hi",
+      "track": "ai",
+      "question_index": 0,
+      "language": "hi-IN",
+      "category": "dialogue_skip",
+      "answer": "इस प्रश्न को छोड़ दें और आगे बढ़ें",
+      "expected_intent": "skip"
+    }
+  ]
+}

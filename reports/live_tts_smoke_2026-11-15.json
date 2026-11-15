@@ -1,0 +1,13 @@
+{
+  "status": "success",
+  "provider": "Gnani Timbre v2.5 REST",
+  "latency_ms": 2206.7,
+  "bytes": 76844,
+  "sample_rate_hz": 24000,
+  "channels": 1,
+  "sample_width_bytes": 2,
+  "frames": 38400,
+  "duration_seconds": 1.6,
+  "riff_size_matches_body": true,
+  "data_size_matches_body": true
+}

@@ -42,3 +42,15 @@ The first command requires `espeak` installed for *synthetic English voice gener
 3. Compare **raw vs spectral vs DeepFilterNet3** with paired clips and actual Gnani Prisma calls via `python -m eval_harness.asr_ab --manifest ... --run-live`. The existing ASR script compares raw against spectral only; add neural as a third branch when installed.
 4. Compute WER/CER and critical-term preservation, p50/p95 latency, failures by language/noise type; inspect per-utterance deterioration.
 5. Choose enhancement only when transcript quality is improved or at least not worsened at acceptable latency. Do not select on synthetic SNR alone.
+
+## Current realtime microphone processing status
+
+The active ClearView WebSocket client asks the browser for echo cancellation, noise suppression, and automatic gain control as ideal microphone constraints. After opening the track it reports browser-supported status and actual `getSettings()` values in the interview screen. Browsers may ignore the request or report no value. This is diagnostic reporting, not a measurable noise-cancellation guarantee. No raw microphone settings or audio is exposed through that diagnostic event to the server.
+
+The server-side spectral filter is now available as an **opt-in second-pass comparison** in the ClearView streaming path. It does not replace the raw live transcript used by the interview rubric. After each answer, the browser may show the live transcript beside a second Gnani Prisma transcript made from the same answer after spectral filtering. This sends one additional processed audio copy to Gnani, adds provider latency/usage, and is off by default. Audio is buffered in memory for at most 30 seconds and discarded after the comparison; it is not added to session storage.
+
+The comparison only reports transcript text, filter time, provider latency, and exact-match disagreement. It has no human reference and therefore does **not** show which transcript is correct or whether noise cancellation improved. Browser noise processing and the optional server filter can both be active, so paired human-reference WER/CER is still required before choosing any default. The archive has no real noisy Telugu or Telugu-English Prisma evaluation.
+
+## Additional live provider probe (15 Nov 2026)
+
+A three-request exploratory Prisma check on synthetic espeak English speech is documented in [live API smoke results](LIVE_API_SMOKE_2026-11-15.md). Raw noisy input produced no transcript; filtered noisy input produced WER 1.00, and the clean control WER 0.9167. These are poor, unmatched synthetic results, not evidence of denoising benefit. No human Telugu or Telugu-English noisy Prisma WER is available.

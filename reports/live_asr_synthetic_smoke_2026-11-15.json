@@ -1,0 +1,39 @@
+{
+  "run_type": "live_gnani_prisma_synthetic_smoke",
+  "provider_calls": 3,
+  "source": "synthetic espeak English speech plus generated stationary noise; not human recordings",
+  "provider_language_code": "en-IN",
+  "known_reference": "The neural network is overfitting. I used a validation split and regularization.",
+  "results": [
+    {
+      "input": "espeak_16k_10dB_noisy.wav",
+      "mode": "off",
+      "status": "provider_no_transcript",
+      "error": "No speech detected. Please record a clearer, longer answer.",
+      "provider_latency_ms": null
+    },
+    {
+      "input": "espeak_16k_10dB_noisy.wav",
+      "mode": "spectral",
+      "status": "transcribed",
+      "wer": 1.0,
+      "provider_latency_ms": 5034.7,
+      "transcript_words": 2,
+      "model": "prisma-v2.5"
+    },
+    {
+      "input": "espeak_16k_10dB_clean.wav",
+      "mode": "off",
+      "status": "transcribed",
+      "wer": 0.9167,
+      "provider_latency_ms": 3445.1,
+      "transcript_words": 2,
+      "model": "prisma-v2.5"
+    }
+  ],
+  "limitations": [
+    "One synthetic voice/style; not natural English, Telugu, or code-mixed speech.",
+    "The raw noisy 10 dB provider call returned no transcript; spectral and clean-control outcomes are reported separately.",
+    "No conclusions about noise suppression or product ASR quality can be drawn."
+  ]
+}

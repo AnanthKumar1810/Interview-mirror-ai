@@ -8,7 +8,7 @@ COPY . /app
 RUN mkdir -p /app/.data && chown -R appuser:appuser /app/.data
 USER appuser
 VOLUME ["/app/.data"]
-EXPOSE 8001
+EXPOSE 8002
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/api/health', timeout=3)" || exit 1
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/api/health', timeout=3)" || exit 1
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002", "--workers", "1"]

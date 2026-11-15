@@ -1,0 +1,39 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      GNANI_API_KEY: ${GNANI_API_KEY:-}
+      IM_DATABASE_PATH: /app/.data/interviewmirror.sqlite3
+      IM_ENV: development
+      IM_AUTH_REQUIRED: "false"
+    ports:
+      - "127.0.0.1:8002:8002"
+    volumes:
+      - interviewmirror-data:/app/.data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/api/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      IM_BACKEND_ORIGIN: http://backend:8002
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8082:8082"
+
+volumes:
+  interviewmirror-data:

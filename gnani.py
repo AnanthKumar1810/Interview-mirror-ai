@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import json
+import struct
 import httpx
 
 STT_URL = "https://api.vachana.ai/stt/v3"
@@ -20,6 +21,60 @@ VOICE = {"en-IN": "Pranav", "te-IN": "Suhana", "hi-IN": "Nalini"}
 
 class GnaniError(RuntimeError):
     """Expected, non-sensitive error that the UI can display."""
+
+
+def _finalize_wav_sizes(audio: bytes) -> bytes:
+    """Fix RIFF/data size sentinels used by Gnani's completed REST WAV response.
+
+    A streamed WAV writer may leave 0xffffffff in RIFF and data length fields.
+    REST returns the complete binary body, so finalize those two lengths from
+    the received byte count before exposing it to normal WAV decoders. Other
+    malformed/truncated chunks are rejected instead of guessed.
+    """
+    if len(audio) < 12 or audio[:4] != b"RIFF" or audio[8:12] != b"WAVE":
+        raise GnaniError("Gnani Timbre did not return a valid WAV recording.")
+    result = bytearray(audio)
+    sentinel = 0xFFFFFFFF
+    riff_size = struct.unpack_from("<I", result, 4)[0]
+    offset = 12
+    data_sentinel = False
+    found_data = False
+    found_fmt = False
+    while offset + 8 <= len(result):
+        chunk_id = bytes(result[offset:offset + 4])
+        chunk_size = struct.unpack_from("<I", result, offset + 4)[0]
+        payload_start = offset + 8
+        if chunk_size == sentinel:
+            if chunk_id != b"data" or payload_start > len(result):
+                raise GnaniError("Gnani Timbre returned malformed WAV chunk sizes.")
+            chunk_size = len(result) - payload_start
+            if chunk_size % 2:
+                raise GnaniError("Gnani Timbre returned an incomplete PCM sample.")
+            struct.pack_into("<I", result, offset + 4, chunk_size)
+            data_sentinel = True
+        elif payload_start + chunk_size > len(result):
+            raise GnaniError("Gnani Timbre returned a truncated WAV chunk.")
+
+        if chunk_id == b"fmt ":
+            if chunk_size < 16:
+                raise GnaniError("Gnani Timbre returned an invalid WAV format chunk.")
+            found_fmt = True
+        elif chunk_id == b"data":
+            found_data = True
+
+        next_offset = payload_start + chunk_size + (chunk_size & 1)
+        if next_offset > len(result):
+            raise GnaniError("Gnani Timbre returned a truncated WAV chunk.")
+        offset = next_offset
+
+    if offset != len(result) or not found_fmt or not found_data:
+        raise GnaniError("Gnani Timbre did not return a complete WAV recording.")
+    actual_riff_size = len(result) - 8
+    if riff_size == sentinel or data_sentinel:
+        struct.pack_into("<I", result, 4, actual_riff_size)
+    elif riff_size != actual_riff_size:
+        raise GnaniError("Gnani Timbre returned inconsistent WAV container sizes.")
+    return bytes(result)
 
 
 class GnaniClient:
@@ -63,16 +118,27 @@ class GnaniClient:
         except httpx.RequestError as exc:
             raise GnaniError("Could not reach Gnani; check your network or provider availability.") from exc
 
-    def transcribe(self, audio_wav: bytes, language: str, bias_terms: list[str] | None = None) -> dict:
-        if language not in VOICE:
+    def transcribe(self, audio_wav: bytes, language: str, bias_terms: list[str] | None = None,
+                   *, model_version: str = "prisma-v2.5") -> dict:
+        if model_version not in {"prisma-v2.5", "prisma-v3.0"}:
+            raise GnaniError("Unsupported Prisma model.")
+        v3_hints = language.split(",") if model_version == "prisma-v3.0" else []
+        valid_v3_hints = (1 <= len(v3_hints) <= 4 and all(hint in VOICE for hint in v3_hints)
+                          and len(set(v3_hints)) == len(v3_hints))
+        if language not in VOICE and not (model_version == "prisma-v3.0"
+                                          and (language == "indic-auto" or valid_v3_hints)):
             raise GnaniError("Unsupported transcription language.")
         # Official docs: omit model for default Prisma v2.5. The provider only
         # needs audio_file and language_code; format=transcribe cleans punctuation.
         data = {"language_code": language, "format": "transcribe"}
+        if model_version == "prisma-v3.0":
+            data.update({"model": "prisma-v3.0", "format": "codemix"})
         # Prisma v2.5: single letter-only words, paired with an allowed score.
         # Keep the list small and review the resulting transcript before scoring.
         terms = list(dict.fromkeys(term for term in (bias_terms or []) if term.isascii() and term.isalpha() and 4 <= len(term) <= 40))[:100]
-        if terms:
+        if terms and model_version == "prisma-v3.0":
+            data["keyterms"] = json.dumps(terms)
+        elif terms:
             data.update({"bias_list": json.dumps(terms), "bias_score": "1.0"})
         response = self._post(
             STT_URL,
@@ -90,10 +156,13 @@ class GnaniClient:
             raise GnaniError("Gnani Prisma response did not contain a transcript.")
         if not transcript.strip():
             raise GnaniError("No speech detected. Please record a clearer, longer answer.")
+        if payload.get("truncated") is True:
+            raise GnaniError("Prisma transcript was truncated; retry with shorter audio.")
         return {
             "transcript": transcript.strip(),
-            "model": payload.get("model", "prisma-v2.5"),
+            "model": payload.get("model", model_version),
             "request_id": payload.get("request_id"),
+            "detected_language_code": payload.get("detected_language_code"),
         }
 
     def synthesize(self, text: str, language: str) -> bytes:
@@ -113,7 +182,7 @@ class GnaniClient:
             },
         }
         response = self._post(TTS_URL, json=body)
-        data = response.content
+        data = _finalize_wav_sizes(response.content)
         # Validate the full container instead of relying only on RIFF/WAVE magic.
         import io
         import wave
@@ -128,4 +197,6 @@ class GnaniClient:
         if not valid:
             raise GnaniError("Gnani Timbre did not return a valid WAV recording.")
         return data
+
+
 

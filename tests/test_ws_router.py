@@ -1,0 +1,402 @@
+import asyncio
+import io
+import json
+import wave
+import pytest
+from starlette.websockets import WebSocketDisconnect
+from fastapi.testclient import TestClient
+
+from main import app, STORE
+import ws_router
+from ws_protocol import PROTOCOL_VERSION, PCM_FRAME_BYTES
+from gnani_streaming import PrismaEvent, TimbreAudioChunk
+
+
+class DummyPrismaStreaming:
+    """Mock Prisma client that records audio sent and produces controlled events."""
+    instances = []
+
+    def __init__(self, language_code="en-IN", model="prisma-v2.5", **kwargs):
+        self.language_code = language_code
+        self.model = model
+        self.audio_sent = []
+        self.commit_called = False
+        self.closed = False
+        self._events_queue = asyncio.Queue()
+        self.ws_url = "wss://api.vachana.ai/stt/v3/stream"
+        DummyPrismaStreaming.instances.append(self)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.closed = True
+
+    async def send_audio(self, pcm_data: bytes):
+        self.audio_sent.append(pcm_data)
+
+    async def commit(self):
+        self.commit_called = True
+
+    async def send_eof(self):
+        await self.commit()
+
+    async def events(self):
+        while not self.closed:
+            try:
+                evt = await asyncio.wait_for(self._events_queue.get(), timeout=0.1)
+                yield evt
+            except asyncio.TimeoutError:
+                if self.closed:
+                    break
+
+
+class DummyTimbreStreaming:
+    """Mock Timbre client that yields simulated audio chunks without hitting network."""
+    instances = []
+
+    def __init__(self, language="en-IN", **kwargs):
+        self.language = language
+        self.synthesize_calls = []
+        self.interrupted = False
+        self.closed = False
+        self.ws_url = "wss://api.vachana.ai/api/v1/tts"
+        DummyTimbreStreaming.instances.append(self)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.closed = True
+
+    async def synthesize(self, text: str):
+        self.synthesize_calls.append(text)
+        yield TimbreAudioChunk(data=b"\x01" * 1024, is_last=False)
+        yield TimbreAudioChunk(data=b"", is_last=True)
+
+    async def interrupt(self):
+        self.interrupted = True
+        self.closed = True
+
+
+@pytest.fixture(autouse=True)
+def patch_gnani_clients(monkeypatch):
+    DummyPrismaStreaming.instances.clear()
+    DummyTimbreStreaming.instances.clear()
+    monkeypatch.setattr(ws_router, "PrismaStreamingClient", DummyPrismaStreaming)
+    monkeypatch.setattr(ws_router, "TimbreStreamingClient", DummyTimbreStreaming)
+
+
+def test_ws_connection_rejected_with_invalid_protocol_version():
+    client = TestClient(app)
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect("/ws/interview?protocol_version=99.0"):
+            pass
+    assert exc_info.value.code == 1008
+
+
+def test_ws_connection_with_valid_protocol_version_and_missing_session_start():
+    client = TestClient(app)
+    with pytest.raises(WebSocketDisconnect) as exc_info:
+        with client.websocket_connect(f"/ws/interview?protocol_version={PROTOCOL_VERSION}") as ws:
+            ws.send_text(json.dumps({"type": "ping"}))
+            ws.receive_text()
+    assert exc_info.value.code == 1008
+
+
+def test_ws_session_start_without_consent_rejected():
+    client = TestClient(app)
+    with client.websocket_connect("/ws/interview") as ws:
+        ws.send_text(json.dumps({
+            "type": "session_start",
+            "protocol_version": PROTOCOL_VERSION,
+            "track": "agentic",
+            "language": "en-IN",
+            "consent_given": False,
+        }))
+        err_msg = json.loads(ws.receive_text())
+        assert err_msg["type"] == "error"
+        assert err_msg["code"] == "consent_required"
+
+
+def test_ws_session_start_ack_and_flow():
+    client = TestClient(app)
+    with client.websocket_connect(f"/ws/interview?protocol_version={PROTOCOL_VERSION}") as ws:
+        ws.send_text(json.dumps({
+            "type": "session_start",
+            "protocol_version": PROTOCOL_VERSION,
+            "track": "agentic",
+            "language": "en-IN",
+            "consent_given": True,
+            "stt_model": "prisma-v2.5",
+        }))
+
+        ack = json.loads(ws.receive_text())
+        assert ack["type"] == "session_ack"
+        assert ack["status"] == "ok"
+        assert ack["question_number"] == 1
+        assert "question" in ack
+        assert "session_id" in ack
+
+        # Verify session is persisted in SQLiteStore
+        stored = STORE.get_session(ack["session_id"], None)
+        assert stored is not None
+        assert stored["state"]["track"] == "agentic"
+
+        ws.close()
+
+
+def test_ws_binary_audio_forwarding():
+    client = TestClient(app)
+    with client.websocket_connect("/ws/interview") as ws:
+        ws.send_text(json.dumps({
+            "type": "session_start",
+            "protocol_version": PROTOCOL_VERSION,
+            "track": "agentic",
+            "language": "en-IN",
+            "consent_given": True,
+        }))
+
+        ack = json.loads(ws.receive_text())
+        assert ack["type"] == "session_ack"
+
+        # Drain until state is listening
+        for _ in range(5):
+            msg = ws.receive()
+            if "text" in msg and msg["text"]:
+                data = json.loads(msg["text"])
+                if data.get("type") == "turn_state" and data.get("raw_state") == "listening":
+                    break
+
+        pcm_frame = b"\x05" * PCM_FRAME_BYTES
+        ws.send_bytes(pcm_frame)
+
+        # Allow ingest queue processing
+        assert len(DummyPrismaStreaming.instances) > 0
+        prisma_instance = DummyPrismaStreaming.instances[0]
+
+        ws.send_text(json.dumps({"type": "ping"}))
+        for _ in range(5):
+            msg = ws.receive()
+            if "text" in msg and msg["text"]:
+                data = json.loads(msg["text"])
+                if data.get("type") == "pong":
+                    break
+
+        assert len(prisma_instance.audio_sent) >= 1
+        ws.close()
+
+
+def test_slow_client_detection():
+    from ws_router import _SessionContext, _enqueue_or_drop
+
+    ctx = _SessionContext("test-id", "agentic", "en-IN", "prisma-v2.5", consent=True)
+    small_q = asyncio.Queue(maxsize=2)
+
+    asyncio.run(_enqueue_or_drop(small_q, "item-1", ctx))
+    asyncio.run(_enqueue_or_drop(small_q, "item-2", ctx))
+    assert small_q.full()
+    assert ctx.metrics.dropped_frames == 0
+
+    asyncio.run(_enqueue_or_drop(small_q, "item-3", ctx))
+    assert ctx.metrics.dropped_frames == 1
+    assert small_q.qsize() == 2
+    assert small_q.get_nowait() == "item-2"
+    assert small_q.get_nowait() == "item-3"
+
+
+def test_realtime_noise_eval_capture_is_opt_in_and_bounded():
+    disabled = ws_router._SessionContext(
+        session_id="noise-off", track="software", language="en-IN",
+        stt_model="prisma-v2.5", consent=True,
+    )
+    ws_router._capture_noise_eval_frame(disabled, b"\x01" * PCM_FRAME_BYTES)
+    assert disabled.noise_eval_audio == b""
+
+    enabled = ws_router._SessionContext(
+        session_id="noise-on", track="software", language="en-IN",
+        stt_model="prisma-v2.5", consent=True, noise_eval_enabled=True,
+    )
+    ws_router._capture_noise_eval_frame(enabled, b"\x01" * PCM_FRAME_BYTES)
+    assert len(enabled.noise_eval_audio) == PCM_FRAME_BYTES
+    enabled.noise_eval_audio.extend(b"\x00" * (ws_router.NOISE_EVAL_MAX_AUDIO_BYTES - PCM_FRAME_BYTES))
+    ws_router._capture_noise_eval_frame(enabled, b"\x01" * PCM_FRAME_BYTES)
+    assert enabled.noise_eval_audio_overflow is True
+    assert enabled.noise_eval_audio == b""
+
+
+def test_noise_comparison_runs_spectral_second_pass_through_gnani(monkeypatch):
+    calls = {}
+
+    def enhance(raw_wav, *, mode):
+        calls["mode"] = mode
+        with wave.open(io.BytesIO(raw_wav), "rb") as audio:
+            calls["rate"] = audio.getframerate()
+            calls["frames"] = audio.getnframes()
+        return b"enhanced-wav", {"enhancement": mode}
+
+    class FakeGnani:
+        enabled = True
+
+        def __init__(self):
+            self.client = self
+
+        def transcribe(self, audio, language, *, model_version):
+            calls.update({"sent_audio": audio, "language": language, "model": model_version})
+            return {"transcript": "I built a service", "model": model_version}
+
+        def close(self):
+            calls["closed"] = True
+
+    import speech_enhancement
+    monkeypatch.setattr(speech_enhancement, "enhance_pcm16_wav", enhance)
+    monkeypatch.setattr(ws_router, "GnaniClient", FakeGnani)
+    result = ws_router._compare_noise_audio_sync(
+        "I Built  a Service", b"\x00\x00" * 8000, "te-IN", "prisma-v3.0"
+    )
+
+    assert calls["mode"] == "spectral"
+    assert calls["rate"] == 16000
+    assert calls["frames"] == 8000
+    assert calls["language"] == "te-IN"
+    assert calls["model"] == "prisma-v3.0"
+    assert calls["sent_audio"] == b"enhanced-wav"
+    assert calls["closed"] is True
+    assert result["exact_match"] is True
+    assert "not an accuracy score" in result["note"]
+
+
+def test_candidate_barge_in():
+    client = TestClient(app)
+    with client.websocket_connect("/ws/interview") as ws:
+        ws.send_text(json.dumps({
+            "type": "session_start",
+            "protocol_version": PROTOCOL_VERSION,
+            "track": "agentic",
+            "language": "en-IN",
+            "consent_given": True,
+        }))
+
+        ack = json.loads(ws.receive_text())
+        assert ack["type"] == "session_ack"
+
+        # Candidate interrupts during question playback
+        ws.send_text(json.dumps({
+            "type": "barge_in",
+            "generation_id": 1,
+        }))
+
+        # Server should transition to listening and update state
+        found_listening = False
+        for _ in range(5):
+            msg = ws.receive()
+            if "text" in msg and msg["text"]:
+                data = json.loads(msg["text"])
+                if data.get("type") == "turn_state" and data.get("raw_state") == "listening":
+                    found_listening = True
+                    break
+
+        assert found_listening is True
+        ws.close()
+
+
+def test_end_interview_early():
+    client = TestClient(app)
+    with client.websocket_connect("/ws/interview") as ws:
+        ws.send_text(json.dumps({
+            "type": "session_start",
+            "protocol_version": PROTOCOL_VERSION,
+            "track": "software",
+            "language": "en-IN",
+            "consent_given": True,
+        }))
+
+        ack = json.loads(ws.receive_text())
+        sid = ack["session_id"]
+
+        # User clicks End interview early
+        ws.send_text(json.dumps({
+            "type": "end_interview",
+            "session_id": sid,
+        }))
+
+        # Server sends complete state and metrics
+        found_complete = False
+        for _ in range(10):
+            try:
+                msg = ws.receive()
+                if "text" in msg and msg["text"]:
+                    data = json.loads(msg["text"])
+                    if data.get("type") == "turn_state" and data.get("state") == "Complete":
+                        found_complete = True
+                        break
+            except Exception:
+                break
+
+        assert found_complete is True
+        ws.close()
+
+    # Session in SQLiteStore must be persisted and accessible
+    stored = STORE.get_session(sid, None)
+    assert stored is not None
+    assert stored["state"]["track"] == "software"
+
+
+def test_transcript_correction_endpoint():
+    client = TestClient(app)
+    # Start session via REST
+    res = client.post("/api/session", json={"track": "ai", "language": "en-IN"})
+    assert res.status_code == 200
+    sid = res.json()["session_id"]
+
+    # Submit answer
+    ans_res = client.post("/api/answer", json={
+        "session_id": sid,
+        "text": "I built a model with PyTorch and evaluated precision."
+    })
+    assert ans_res.status_code == 200
+
+    # Candidate corrects transcript post-call
+    corr_res = client.post(f"/api/sessions/{sid}/correct", json={
+        "question_index": 0,
+        "corrected_text": "I built a classification model with PyTorch, split the data, and evaluated precision and recall."
+    })
+    assert corr_res.status_code == 200
+    body = corr_res.json()
+    assert body["corrected"] is True
+    assert "classification" in body["answer"]["transcript"]
+    assert body["answer"]["feedback"]["score"] >= 0
+
+    # Verify report reflects corrected answer
+    report = client.get(f"/api/report/{sid}").json()
+    assert len(report["results"]) == 1
+    assert "classification" in report["results"][0]["transcript"]
+
+
+@pytest.mark.asyncio
+async def test_streaming_required_never_switches_to_delayed_rest(monkeypatch):
+    ctx = ws_router._SessionContext(
+        session_id="streaming-required-test", track="software", language="en-IN",
+        stt_model="prisma-v2.5", consent=True, require_streaming=True,
+    )
+    fallback_called = False
+    messages = []
+
+    async def unavailable(_ctx):
+        raise RuntimeError("streaming unavailable")
+
+    async def fallback(_ctx):
+        nonlocal fallback_called
+        fallback_called = True
+
+    async def capture(_ctx, message):
+        messages.append(message)
+
+    monkeypatch.setattr(ws_router, "_live_prisma_stt", unavailable)
+    monkeypatch.setattr(ws_router, "_fallback_vad_stt", fallback)
+    monkeypatch.setattr(ws_router, "_send_json", capture)
+    await ws_router._gnani_stt_events(ctx)
+
+    assert fallback_called is False
+    assert ctx.active is False
+    assert any(message["type"] == "error" and message["code"] == "stt_connection_error" for message in messages)
