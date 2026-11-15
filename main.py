@@ -12,8 +12,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request, Depends
-from fastapi.responses import FileResponse, Response
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse, Response
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
@@ -37,7 +36,6 @@ def current_owner(request: Request) -> str | None:
     return principal(request, STORE)
 
 app = FastAPI(title="InterviewMirror AI", version="0.1.0", docs_url="/api/docs")
-app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
 
 @app.middleware("http")
@@ -242,7 +240,9 @@ def provider() -> GnaniClient:
 
 @app.get("/")
 def home():
-    return FileResponse(ROOT / "static" / "index.html")
+    """Send browser users to the canonical React frontend."""
+    frontend_origin = os.getenv("IM_FRONTEND_ORIGIN", "http://127.0.0.1:8082").rstrip("/")
+    return RedirectResponse(url=f"{frontend_origin}/", status_code=307)
 
 
 @app.get("/api/status")

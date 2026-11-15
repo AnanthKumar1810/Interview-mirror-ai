@@ -1,6 +1,7 @@
-# ClearView frontend integration
+# InterviewMirror frontend
 
-This folder incorporates the ClearView React/TanStack frontend from
+This is the canonical InterviewMirror interface, using the visual design from
+the Option1 Complete preview. It incorporates the ClearView React/TanStack frontend from
 [`AnanthKumar1810/clearview-app-preview`](https://github.com/AnanthKumar1810/clearview-app-preview)
 at `57e0c40bc5c37ce44b92ebac698c776798746df2`. Its interview flow now uses
 InterviewMirror's FastAPI WebSocket, Gnani Prisma streaming STT, Gnani Timbre
@@ -19,7 +20,9 @@ Copy-Item .env.example .env
 docker compose up --build
 ```
 
-Open `http://127.0.0.1:8082/app/new`. Docker Compose runs the backend and
+Open `http://127.0.0.1:8082/` for the landing page, then choose **Start practising**.
+The backend address at `http://127.0.0.1:8002/` redirects to this frontend.
+Docker Compose runs the backend and
 ClearView frontend together, waits for the backend health check, and connects
 the frontend's `/api` and `/ws` proxy over the private Compose network. Both
 ports are bound to loopback. This is a local development stack, not a public
@@ -50,7 +53,7 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 8082
 ```
 
-Open `http://127.0.0.1:8082/app/new`. Use the Start button once. Grant
+Open `http://127.0.0.1:8082/` and choose **Start practising**. Use the Start button once. Grant
 microphone access if your browser asks. The browser streams 16 kHz PCM frames
 through `/ws/interview`; the frontend development server proxies `/ws` and
 `/api` to FastAPI on port 8002. The interviewer automatically detects the end

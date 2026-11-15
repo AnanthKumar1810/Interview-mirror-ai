@@ -52,13 +52,5 @@ def test_offline_check_rejects_invalid_encoding_or_media():
     assert client.post('/api/audio/check', files={'audio': ('bad.wav', b'not-a-wav', 'audio/wav')}).status_code == 422
 
 
-def test_frontend_has_replay_export_and_transparency():
-    res = client.get('/')
-    assert res.status_code == 200
-    assert 'id="preview-btn"' in res.text
-    assert 'id="save-record-btn"' in res.text
-    assert 'real transcription needs api access' in res.text.lower()
-    js = client.get('/static/app.js').text
-    assert "api('/api/audio/check'" in js
-    assert "state.live" in js
-    assert 'No Gnani key' in js
+def test_legacy_static_frontend_is_not_served():
+    assert client.get('/static/index.html').status_code == 404

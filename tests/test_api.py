@@ -25,8 +25,10 @@ def wav_bytes(rate=16000, duration=1.0):
 
 def test_website_and_demo_status(monkeypatch):
     monkeypatch.delenv('GNANI_API_KEY', raising=False)
-    homepage = client.get('/')
-    assert homepage.status_code == 200 and 'interviewmirror' in homepage.text.lower()
+    monkeypatch.setenv('IM_FRONTEND_ORIGIN', 'http://127.0.0.1:8082')
+    homepage = client.get('/', follow_redirects=False)
+    assert homepage.status_code == 307
+    assert homepage.headers['location'] == 'http://127.0.0.1:8082/'
     info = client.get('/api/status').json()
     assert info['mode'] == 'local_demo' and info['stt_model'] == 'prisma-v2.5'
     health = client.get('/api/health').json()

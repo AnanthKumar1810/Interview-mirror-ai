@@ -6,6 +6,7 @@ services:
     environment:
       GNANI_API_KEY: ${GNANI_API_KEY:-}
       IM_DATABASE_PATH: /app/.data/interviewmirror.sqlite3
+      IM_FRONTEND_ORIGIN: http://127.0.0.1:8082
       IM_ENV: development
       IM_AUTH_REQUIRED: "false"
     ports:

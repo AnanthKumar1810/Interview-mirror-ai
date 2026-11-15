@@ -1,7 +1,23 @@
-# InterviewMirror AI — Gnani Voice Evaluation & Noise Upgrade
+# InterviewMirror AI
 
-**New ClearView realtime frontend:** see [frontend/README.md](frontend/README.md)
-for the integrated Start → streaming transcript → automatic next question flow.
+The **Option1 Complete interface** is the canonical frontend for this project.
+Open the landing page at `http://127.0.0.1:8082/`, then choose **Start practising**
+to enter the integrated real-time interview. The backend root redirects to this
+frontend. The former standalone `static/` page is no longer served as an app.
+
+Start the full local experience from the repository root:
+
+```powershell
+docker compose up --build
+```
+
+Then open `http://127.0.0.1:8082/`. See [frontend/README.md](frontend/README.md)
+for the manual frontend/backend setup and interview flow details.
+
+**Current implementation:** FastAPI with Gnani Prisma STT and Timbre TTS. Interview
+scoring and follow-up selection are deterministic practice logic, not a Gnani
+semantic evaluator. Evon and translation access are unavailable with the current
+STT/TTS-only key.
 
 See [the 2026-11-14 live first-answer fix and verification](docs/LIVE_TURN_FIX_2026-11-14.md) for the current hands-free streaming status and remaining device-level tests.
 
@@ -13,7 +29,7 @@ See [three-report reconciliation](docs/REPORT_RECONCILIATION.md) for findings ve
 
 **Implementation guides:** [Architecture](docs/ARCHITECTURE.md) · [Gnani engineering scope](docs/GNANI_VOICE_ENGINEERING_SCOPE.md) · [Deployment and security](docs/DEPLOYMENT_AND_SECURITY.md) · [Changelog](docs/IMPLEMENTATION_CHANGELOG.md).
 
-**Getting started:** use Python 3.13, run `python -m pip install -r requirements-dev.txt`, `python -m pytest -q`, `python -m eval_harness.compare_robust`, then `python -m uvicorn main:app --reload --port 8001`. Set `GNANI_API_KEY` **only in your local `.env`** to test real STT/TTS. The default enhancement is **off**, with experimental spectral and optional DeepFilterNet3 choices. The UI asks for consent before forwarding recordings to Gnani.
+**Backend development:** use Python 3.13 and install `requirements-dev.txt`. For a frontend-connected local app, use Docker Compose above or follow the two-process instructions in [frontend/README.md](frontend/README.md). Set `GNANI_API_KEY` **only in your local `.env`** to test real STT/TTS. The default enhancement is **off**, with experimental spectral and optional DeepFilterNet3 choices. The UI asks for consent before forwarding recordings to Gnani.
 
 **Production disclaimer:** user accounts, Argon2 password hashes, bearer authentication and SQLite persistence are now implemented and tested. Expert-calibrated scores, live real-provider benchmarking and public deployment controls are still outstanding; see the security runbook.
 
