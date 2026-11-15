@@ -76,6 +76,7 @@ export interface SetupDraft {
   targetRole: string;
   github: string;
   highlights: string;
+  useGemini?: boolean;
   compareNoiseEnhancement?: boolean;
 }
 

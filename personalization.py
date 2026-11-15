@@ -12,6 +12,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+from urllib.parse import urlparse
 from typing import Any
 
 logger = logging.getLogger("interviewmirror.personalization")
@@ -20,6 +21,18 @@ MAX_RESUME_CHARS = 50_000
 GITHUB_REQUEST_TIMEOUT = 3.0
 GITHUB_SLUG_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.]+\/[a-zA-Z0-9_\-\.]+$")
 GITHUB_USER_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
+
+
+def _github_identifier(value: str) -> str | None:
+    cleaned = value.strip()
+    if "://" in cleaned:
+        parsed = urlparse(cleaned)
+        if parsed.scheme not in ("http", "https") or parsed.hostname not in ("github.com", "www.github.com") or parsed.username or parsed.password or parsed.port:
+            return None
+        return parsed.path.strip("/")
+    if cleaned.startswith(("github.com/", "www.github.com/")):
+        return cleaned.split("/", 1)[1].strip("/")
+    return cleaned
 
 INTRODUCE_YOURSELF_QUESTION = {
     "en-IN": "Please introduce yourself, and tell me briefly about your technical background and what you are passionate about building.",
@@ -45,16 +58,14 @@ def parse_github_slug(input_str: str) -> str | None:
 
     Guards strictly against SSRF, internal IP addresses, and command injection.
     """
-    cleaned = input_str.strip()
+    cleaned = _github_identifier(input_str)
     if not cleaned:
         return None
-
-    # Handle https://github.com/owner/repo or http://
-    if "github.com/" in cleaned:
-        parts = [p for p in cleaned.split("github.com/")[-1].split("/") if p]
-        if len(parts) >= 2:
-            repo_part = parts[1].removesuffix(".git")
-            cleaned = f"{parts[0]}/{repo_part}"
+    if any(part in ("", ".", "..") for part in cleaned.strip("/").split("/")):
+        return None
+    parts = [p for p in cleaned.split("/") if p]
+    if len(parts) >= 2:
+        cleaned = f"{parts[0]}/{parts[1]}"
 
     # Strip trailing slashes or .git
     cleaned = cleaned.removesuffix(".git").rstrip("/")
@@ -71,16 +82,11 @@ def parse_github_slug(input_str: str) -> str | None:
 
 def parse_github_target(input_str: str) -> tuple[str, str] | tuple[None, None]:
     """Extract and validate GitHub username or owner/repo slug."""
-    cleaned = input_str.strip()
+    cleaned = _github_identifier(input_str)
     if not cleaned:
         return None, None
-    if "github.com/" in cleaned:
-        parts = [p for p in cleaned.split("github.com/")[-1].split("/") if p]
-        if len(parts) >= 2:
-            repo_part = parts[1].removesuffix(".git")
-            cleaned = f"{parts[0]}/{repo_part}"
-        elif len(parts) == 1:
-            cleaned = parts[0].removesuffix(".git")
+    if any(part in ("", ".", "..") for part in cleaned.strip("/").split("/")):
+        return None, None
     cleaned = cleaned.removesuffix(".git").rstrip("/")
     if "/" in cleaned:
         slug = parse_github_slug(cleaned)
@@ -225,19 +231,18 @@ def inspect_github_repo(repo_url_or_slug: str, timeout_seconds: float = GITHUB_R
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as exc:
         logger.info("GitHub API fetch fallback for %s: %s", slug, exc)
 
-    # Clean deterministic fallback if offline, rate limited, or private
-    owner, repo_name = slug.split("/", 1)
+    # An unavailable repository supplies no evidence for personalized questions.
     return {
-        "valid": True,
+        "valid": False,
         "kind": "repo",
         "slug": slug,
-        "name": repo_name,
-        "description": f"Public repository by {owner}",
-        "primary_language": "Python",
-        "topics": ["developer-tools"],
+        "name": "",
+        "description": "",
+        "primary_language": "",
+        "topics": [],
         "stars": 0,
-        "status": "fallback",
-        "projects": [{"name": repo_name, "description": f"Public repository by {owner}", "language": "Python", "topics": ["developer-tools"], "stars": 0}],
+        "status": "unavailable",
+        "projects": [],
     }
 
 
@@ -290,17 +295,17 @@ def inspect_github_user(username: str, timeout_seconds: float = GITHUB_REQUEST_T
         logger.info("GitHub user repos fetch fallback for %s: %s", username, exc)
 
     return {
-        "valid": True,
+        "valid": False,
         "kind": "user",
         "username": username,
-        "slug": f"{username}/portfolio-project",
-        "name": "portfolio-project",
-        "description": f"Software project by {username}",
-        "primary_language": "Python",
-        "topics": ["software"],
+        "slug": None,
+        "name": "",
+        "description": "",
+        "primary_language": "",
+        "topics": [],
         "stars": 0,
-        "status": "fallback",
-        "projects": [{"name": "portfolio-project", "description": f"Software project by {username}", "language": "Python", "topics": ["software"], "stars": 0}],
+        "status": "unavailable",
+        "projects": [],
     }
 
 
@@ -329,7 +334,7 @@ def personalize_question_seed(
     resume_text: str | None = None,
     github_repo: str | None = None,
     base_question: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     """Synthesize a personalized initial interview seed.
 
     Preserves Gnani-only model constraint: uses deterministic templates and
@@ -337,6 +342,10 @@ def personalize_question_seed(
     """
     resume_profile = extract_resume_profile(resume_text or "")
     github_profile = inspect_github_target(github_repo) if github_repo else None
+    grounded_resume = bool(resume_profile.get("skills") or resume_profile.get("project_highlights") or resume_profile.get("achievements"))
+    grounded_github = bool(github_profile and github_profile.get("status") == "live" and github_profile.get("projects"))
+    if not grounded_resume and not grounded_github:
+        return None
 
     # Identify primary technical anchor and match GitHub projects to resume
     anchor_tech = ""
@@ -380,16 +389,22 @@ def personalize_question_seed(
             "agentic": f"Tell me about an agent workflow or tool pipeline you implemented {project_context} using {anchor_tech}. What core problem did it solve, and how did you prevent unreliable actions?",
             "ai": f"Describe a model or machine learning pipeline you developed {project_context} using {anchor_tech}. What problem did it address, and how did you evaluate its performance?",
             "software": f"Walk me through a complex bug or distributed systems challenge you investigated {project_context} using {anchor_tech}. What was the root cause, and how did you verify the fix?",
+            "backend": f"Walk me through a backend service you built {project_context} using {anchor_tech}. What design choice mattered most, and how did you test reliability?",
+            "data": f"Describe a data pipeline you built {project_context} using {anchor_tech}. How did you validate data quality and recover from failures?",
         },
         "te-IN": {
             "agentic": f"{anchor_tech} ఉపయోగించి మీరు {project_context} రూపొందించిన ఏజెంట్ వర్క్‌ఫ్లో గురించి చెప్పండి. అది ఏ సమస్యను పరిష్కరించింది, లోపాలు రాకుండా ఏ నియంత్రణలు పెట్టారు?",
             "ai": f"{anchor_tech} తో {project_context} మీరు శిక్షణ ఇచ్చిన మోడల్ లేదా ప్రాజెక్ట్ గురించి వివరించండి. దాని పనితీరును ఎలా కొలిచారు?",
             "software": f"{anchor_tech} ఉపయోగించి {project_context} మీరు పరిశోధించిన ఒక సంక్లిష్ట బగ్ గురించి చెప్పండి. అసలు లోపం ఏమిటి, దాన్ని ఎలా పరిష్కరించారు?",
+            "backend": f"{anchor_tech} ఉపయోగించి మీరు నిర్మించిన బ్యాకెండ్ సేవను వివరించండి. ముఖ్యమైన డిజైన్ నిర్ణయం ఏమిటి, విశ్వసనీయతను ఎలా పరీక్షించారు?",
+            "data": f"{anchor_tech} ఉపయోగించి మీరు నిర్మించిన డేటా పైప్‌లైన్‌ను వివరించండి. డేటా నాణ్యతను ఎలా తనిఖీ చేశారు, వైఫల్యాల నుంచి ఎలా కోలుకున్నారు?",
         },
         "hi-IN": {
             "agentic": f"{anchor_tech} का उपयोग करके {project_context} बनाए गए एजेंट वर्कफ़्लो के बारे में बताइए। उसने क्या समस्या हल की और अनपेक्षित क्रियाओं को कैसे रोका?",
             "ai": f"{anchor_tech} के साथ {project_context} आपके द्वारा बनाए गए मॉडल के बारे में समझाइए। आपने इसके प्रदर्शन का मूल्यांकन कैसे किया?",
             "software": f"{anchor_tech} का उपयोग करके {project_context} जाँचे गए एक जटिल बग के बारे में बताइए। मूल कारण क्या था और आपने समाधान की पुष्टि कैसे की?",
+            "backend": f"{anchor_tech} का उपयोग करके बनाई गई बैकएंड सेवा समझाइए। सबसे महत्वपूर्ण डिज़ाइन निर्णय क्या था और विश्वसनीयता कैसे जाँची?",
+            "data": f"{anchor_tech} से बनाई गई डेटा पाइपलाइन समझाइए। डेटा गुणवत्ता कैसे जाँची और विफलता के बाद कैसे पुनः शुरू किया?",
         },
     }
 
@@ -443,5 +458,5 @@ def personalize_question_seed(
         "resume_profile": resume_profile,
         "github_profile": github_profile,
         "achievement_question": achievement_q,
-        "personalization_applied": bool(resume_text or github_repo),
+        "personalization_applied": True,
     }

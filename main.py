@@ -26,6 +26,7 @@ from robust_evaluation import evaluate_for_app
 from storage import SQLiteStore, ConflictError
 from auth_service import auth_required, principal, issue_token, parse_token, hash_password, verify_password, validate_deployment_config
 import sqlite3
+import io
 
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
@@ -174,6 +175,7 @@ class StartRequest(BaseModel):
     github_repo: str | None = None
     target_questions: int = 3
     role: str = "Software Engineer"
+    allow_gemini: bool = False
 
 class AnswerRequest(BaseModel):
     session_id: str
@@ -251,6 +253,7 @@ def status():
     return {"gnani_live": gnani_on,
             "stt_model": "prisma-v2.5", "tts_model": "timbre-v2.5",
             "evon_local_configured": bool(os.getenv("GNANI_EVON_BASE_URL", "").strip()),
+            "gemini_question_refinement_configured": bool(os.getenv("GEMINI_API_KEY", "").strip()),
             "neural_enhancement_dependency_present": __import__("importlib.util", fromlist=["find_spec"]).find_spec("df") is not None,
             "tracks": TRACK_LABELS, "languages": SUPPORTED_LANGUAGES,
             "mode": "gnani_live" if gnani_on else "local_demo",
@@ -266,6 +269,32 @@ def health():
     return {"status": "ok", "mode": "gnani_live" if is_configured else "mock",
             "provider_configured": is_configured,
             "stt_model": "prisma-v2.5", "tts_model": "timbre-v2.5"}
+
+
+@app.post("/api/resume/extract")
+async def extract_resume(file: UploadFile = File(...), user_id: str | None = Depends(current_owner)):
+    """Extract text in memory; the original resume is never saved."""
+    name = (file.filename or "").lower()
+    if not name.endswith((".pdf", ".docx")):
+        raise HTTPException(415, "Upload a PDF or DOCX resume.")
+    data = await file.read(5_000_001)
+    if len(data) > 5_000_000:
+        raise HTTPException(413, "Resume exceeds the 5 MB limit.")
+    try:
+        if name.endswith(".pdf"):
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(data))
+            text = "\n".join(page.extract_text() or "" for page in reader.pages[:20])
+        else:
+            from docx import Document
+            document = Document(io.BytesIO(data))
+            text = "\n".join(p.text for p in document.paragraphs)
+    except Exception as exc:
+        raise HTTPException(422, "Could not read this resume file.") from exc
+    text = text[:50_000].strip()
+    if not text:
+        raise HTTPException(422, "No selectable text found. Try a text-based PDF or paste highlights.")
+    return {"text": text, "characters": len(text)}
 
 
 @app.post("/api/session")
@@ -285,12 +314,16 @@ def start_session(request: StartRequest, user_id: str | None = Depends(current_o
             resume_text=request.resume_text,
             github_repo=request.github_repo,
         )
+        if seed and request.allow_gemini:
+            from gemini_questions import refine_personalized_seed
+            seed = refine_personalized_seed(seed, "Technical candidate")
         if seed and "text" in seed:
             seed[request.language] = seed["text"]
-        personalized_seed = seed
-        pending_q = INTRODUCE_YOURSELF_QUESTION
-        pending_kind = "introduction"
-        pending_reason = "Mandatory candidate self-introduction"
+        if seed:
+            personalized_seed = seed
+            pending_q = INTRODUCE_YOURSELF_QUESTION
+            pending_kind = "introduction"
+            pending_reason = "Candidate self-introduction before personalized follow-ups"
 
     session = Session(
         track=request.track,

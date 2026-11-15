@@ -1317,20 +1317,23 @@ async def interview_ws(ws: WebSocket) -> None:
     github_repo = getattr(init, "github_repo", None)
 
     from personalization import INTRODUCE_YOURSELF_QUESTION, personalize_question_seed
-    # Question 1 is ALWAYS the introduction question
-    initial_seed = INTRODUCE_YOURSELF_QUESTION
+    from gemini_questions import refine_personalized_seed
+    initial_seed = None
 
     # Pre-analyze GitHub profile or resume for Question 2
     project_seed = None
     if resume_text or github_repo:
-        project_seed = personalize_question_seed(
+        project_seed = await asyncio.to_thread(personalize_question_seed,
             track=track,
             language=language,
             resume_text=resume_text,
             github_repo=github_repo,
         )
+        if getattr(init, "allow_gemini", False):
+            project_seed = await asyncio.to_thread(refine_personalized_seed, project_seed, role)
         if project_seed and "text" in project_seed:
             project_seed[language] = project_seed["text"]
+            initial_seed = INTRODUCE_YOURSELF_QUESTION
 
     try:
         ctx = _SessionContext(

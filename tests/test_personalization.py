@@ -20,6 +20,7 @@ def test_parse_github_slug_valid_and_sanitization():
     assert parse_github_slug("../../../etc/passwd") is None
     assert parse_github_slug("owner/repo; cat /etc/shadow") is None
     assert parse_github_slug("https://evil.com/owner/repo") is None
+    assert parse_github_slug("https://evil.com/github.com/owner/repo") is None
     assert parse_github_slug("") is None
 
 
@@ -42,17 +43,57 @@ def test_extract_resume_profile_bounds_and_skills():
     assert "python" in profile_huge["skills"]
 
 
-def test_inspect_github_repo_offline_fallback():
-    # Calling with dummy repo should safely fallback without raising
+def test_inspect_github_repo_unavailable_has_no_fabricated_evidence():
     result = inspect_github_repo("octocat/Hello-World", timeout_seconds=0.5)
-    assert result["valid"] is True
     assert result["slug"] == "octocat/Hello-World"
-    assert "primary_language" in result
-    assert result["status"] in ("live", "fallback")
+    assert result["status"] in ("live", "unavailable")
+    if result["status"] == "unavailable":
+        assert result["valid"] is False
+        assert result["projects"] == []
+        assert result["primary_language"] == ""
 
     # Invalid slug
     invalid = inspect_github_repo("invalid-slug")
     assert invalid["valid"] is False
+
+
+def test_unavailable_github_without_resume_uses_question_bank(monkeypatch):
+    import personalization
+
+    monkeypatch.setattr(personalization, "inspect_github_target", lambda _: {
+        "valid": False, "status": "unavailable", "projects": [],
+    })
+    assert personalize_question_seed("software", "en-IN", github_repo="owner/repo") is None
+
+
+def test_docx_resume_upload_extracts_text_in_memory():
+    import io
+    from docx import Document
+    from fastapi.testclient import TestClient
+    import main
+
+    document = Document()
+    document.add_paragraph("Built a FastAPI service with Redis caching.")
+    data = io.BytesIO()
+    document.save(data)
+    response = TestClient(main.app).post(
+        "/api/resume/extract",
+        files={"file": ("resume.docx", data.getvalue(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+    )
+    assert response.status_code == 200
+    assert "FastAPI service" in response.json()["text"]
+
+
+@pytest.mark.parametrize("track,term", [("backend", "REST API"), ("data", "data pipeline")])
+def test_extra_domains_have_real_backend_questions(track, term):
+    from coach import QUESTION_BANK
+    from interview_state import InterviewStateMachine
+
+    machine = InterviewStateMachine(track=track, language="en-IN", max_questions=3)
+    assert term.lower() in machine.current_question_text().lower()
+    assert len(QUESTION_BANK[track]) == 3
+    seed = personalize_question_seed(track, "en-IN", resume_text="Built a Python FastAPI data pipeline with quality checks.")
+    assert seed and seed["track"] == track
 
 
 @pytest.mark.parametrize("language", ["en-IN", "te-IN", "hi-IN"])
@@ -70,7 +111,7 @@ def test_personalize_question_seed_deterministic(language, track):
     assert seed["track"] == track
     assert len(seed["concepts"]) == 3
     assert seed["text"]
-    assert "FastAPI" in seed["text"] or "Python" in seed["text"] or "my-backend" in seed["text"]
+    assert "Fastapi" in seed["text"] or "Docker" in seed["text"]
 
 
 def test_resume_achievements_extraction_and_question_generation():

@@ -415,22 +415,36 @@ function PersonaliseStep() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string>("");
 
-  const onFile = (file?: File) => {
+  const onFile = async (file?: File) => {
     if (!file) return;
-    if (!/\.(txt|md|json)$/i.test(file.name)) {
-      toast.error("Please upload a .txt, .md, or .json file");
+    if (!/\.(txt|md|json|pdf|docx)$/i.test(file.name)) {
+      toast.error("Please upload a PDF, DOCX, TXT, MD, or JSON file");
       return;
     }
-    setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = String(reader.result ?? "")
-        .slice(0, 1500)
-        .trim();
+    if (file.size > 5_000_000) {
+      toast.error("Resume files must be under 5 MB");
+      return;
+    }
+    try {
+      let text: string;
+      if (/\.(pdf|docx)$/i.test(file.name)) {
+        const form = new FormData();
+        form.append("file", file);
+        const response = await fetch("/api/resume/extract", { method: "POST", body: form });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || "Could not read this resume");
+        text = result.text;
+      } else {
+        text = await file.text();
+      }
+      text = text.slice(0, 50_000).trim();
+      if (!text) throw new Error("This file contains no readable text");
       actions.updateSetup({ highlights: text });
+      setFileName(file.name);
       toast.success(`Loaded ${file.name} (${text.length} chars)`);
-    };
-    reader.readAsText(file);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Could not read this resume");
+    }
   };
 
   const detectedSkills = DETECTABLE_SKILLS.filter((skill) =>
@@ -474,7 +488,7 @@ function PersonaliseStep() {
             </Label>
             {cleanGithub && (
               <span className="flex items-center gap-1 text-[11px] text-teal">
-                <CheckCircle2 className="size-3" /> Linked
+                <CheckCircle2 className="size-3" /> Entered
               </span>
             )}
           </div>
@@ -486,7 +500,7 @@ function PersonaliseStep() {
           />
           <p className="text-[11px] text-muted-foreground">
             {cleanGithub
-              ? `Backend will query ${cleanGithub} to ground follow-up questions in real repository tech.`
+              ? `The backend will try to inspect public GitHub data for ${cleanGithub}. Questions use it only when available.`
               : "Optional: Links your public projects to generate authentic follow-up questions."}
           </p>
         </div>
@@ -510,15 +524,15 @@ function PersonaliseStep() {
               onClick={() => fileRef.current?.click()}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
             >
-              <Upload className="size-3.5" /> Upload .txt / .md
+              <Upload className="size-3.5" /> Upload resume
             </button>
           </div>
           <input
             ref={fileRef}
             type="file"
-            accept=".txt,.md,.json"
+            accept=".pdf,.docx,.txt,.md,.json"
             className="hidden"
-            onChange={(e) => onFile(e.target.files?.[0])}
+            onChange={(e) => void onFile(e.target.files?.[0])}
           />
         </div>
 
@@ -547,6 +561,18 @@ function PersonaliseStep() {
           onChange={(e) => actions.updateSetup({ highlights: e.target.value })}
           placeholder="e.g. Built a FastAPI streaming service with SQLite persistence, PyTorch inference pipeline, and Docker containerization…"
         />
+
+        <label className="flex items-start gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={setup.useGemini === true}
+            onChange={(event) => actions.updateSetup({ useGemini: event.target.checked })}
+          />
+          <span>
+            Use Gemini to refine project questions from my technical resume highlights and verified
+            public GitHub details. This sends those extracted details to Google.
+          </span>
+        </label>
 
         {detectedSkills.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5 pt-1">

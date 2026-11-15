@@ -191,6 +191,7 @@ export async function startRealtime(setup: SetupDraft): Promise<string> {
       role: setup.targetRole || "Software Engineer",
       github_repo: setup.github || null,
       resume_text: setup.highlights || null,
+      allow_gemini: setup.useGemini === true,
     });
     update({ status: "Allow microphone access" });
     void next
@@ -237,8 +238,14 @@ export function disconnectRealtime() {
 }
 export function trackForDomain(id: string): string {
   return (
-    ({ software_eng: "software", ai_ml: "ai", agentic_ai: "agentic" } as Record<string, string>)[
-      id
-    ] ?? "software"
+    (
+      {
+        backend_eng: "backend",
+        software_eng: "software",
+        ai_ml: "ai",
+        agentic_ai: "agentic",
+        data_eng: "data",
+      } as Record<string, string>
+    )[id] ?? "software"
   );
 }

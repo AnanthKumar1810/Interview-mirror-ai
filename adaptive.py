@@ -449,6 +449,7 @@ def select_followup(
     Addresses misconceptions by grounding follow-ups in foundational concepts.
     Never repeats questions in excluded_texts.
     """
+    domain_track = track if track in ("backend", "data") else None
     if track not in SOCRATIC_BANK:
         track = "agentic"
 
@@ -500,6 +501,13 @@ def select_followup(
             if val and val.strip().casefold() in asked_set:
                 return True
         return False
+
+    if domain_track:
+        from coach import DOMAIN_TIERED_QUESTION_BANK
+        tier = {"fundamentals": "beginner", "applied": "medium", "architecture": "advanced"}[selected_level]
+        candidates = DOMAIN_TIERED_QUESTION_BANK[domain_track][tier]
+        question = next((dict(q) for q in candidates if not is_asked(q)), dict(candidates[0]))
+        return question, f"{domain_track.title()} question at {tier} level", "technical"
 
     tier_bank = SOCRATIC_BANK[track].get(selected_level, SOCRATIC_BANK[track]["applied"])
     chosen_focus = focus

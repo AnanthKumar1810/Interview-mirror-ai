@@ -14,10 +14,12 @@ docker compose up --build
 Then open `http://127.0.0.1:8082/`. See [frontend/README.md](frontend/README.md)
 for the manual frontend/backend setup and interview flow details.
 
-**Current implementation:** FastAPI with Gnani Prisma STT and Timbre TTS. Interview
-scoring and follow-up selection are deterministic practice logic, not a Gnani
-semantic evaluator. Evon and translation access are unavailable with the current
-STT/TTS-only key.
+**Current implementation:** FastAPI with Gnani Prisma STT and Timbre TTS. The
+five interview domains have authored fallback questions. Verified resume and
+public GitHub evidence can tailor project questions; candidates may separately
+opt in to Gemini refinement. Scoring remains deterministic practice feedback,
+not an expert-calibrated semantic evaluator. Evon and translation access are
+unavailable with the current Gnani STT/TTS-only key.
 
 See [the 2026-11-14 live first-answer fix and verification](docs/LIVE_TURN_FIX_2026-11-14.md) for the current hands-free streaming status and remaining device-level tests.
 

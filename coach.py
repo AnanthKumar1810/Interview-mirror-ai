@@ -261,6 +261,18 @@ DOMAIN_TIERED_QUESTION_BANK = {
 }
 
 
+from domain_questions import EXTRA_QUESTION_BANK, EXTRA_TRACK_LABELS
+
+TRACK_LABELS.update(EXTRA_TRACK_LABELS)
+QUESTION_BANK.update(EXTRA_QUESTION_BANK)
+for _track, _questions in EXTRA_QUESTION_BANK.items():
+    DOMAIN_TIERED_QUESTION_BANK[_track] = {
+        "beginner": [_questions[0]],
+        "medium": [_questions[1]],
+        "advanced": [_questions[2]],
+    }
+
+
 def get_domain_fallback_question(track: str, difficulty: str = "intermediate", index: int = 0, language: str = "en-IN") -> dict:
     """Return a curated domain question tailored to the chosen difficulty tier and question index."""
     track_key = track if track in DOMAIN_TIERED_QUESTION_BANK else "software"

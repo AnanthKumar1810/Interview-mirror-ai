@@ -20,6 +20,7 @@ export const DEFAULT_SETUP: SetupDraft = {
   targetRole: "Backend Engineer",
   github: "",
   highlights: "",
+  useGemini: false,
   compareNoiseEnhancement: false,
 };
 
@@ -43,7 +44,13 @@ function persist() {
   if (typeof window === "undefined") return;
   try {
     const { hydrated: _h, ...rest } = state;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        ...rest,
+        setup: { ...rest.setup, highlights: "" },
+      }),
+    );
   } catch {
     /* storage full or blocked — keep in memory */
   }
@@ -76,7 +83,7 @@ export function hydrateStore() {
     // A WebSocket and microphone cannot survive a page reload.
     live: null,
     profile: { ...state.profile, ...saved.profile },
-    setup: { ...state.setup, ...saved.setup },
+    setup: { ...state.setup, ...saved.setup, highlights: "" },
     hydrated: true,
   };
   listeners.forEach((l) => l());

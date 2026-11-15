@@ -38,12 +38,13 @@ SQLite volume and interview history.
 Open two PowerShell windows from the repository root. In the first:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\RUN_REALTIME_BACKEND.ps1 -KeyFile 'C:\path\to\your\private-key-file.txt'
+powershell -ExecutionPolicy Bypass -File .\RUN_REALTIME_BACKEND.ps1 -KeyFile 'C:\path\to\your\gnani-key.txt' -GeminiKeyFile 'C:\path\to\your\gemini-key.txt'
 ```
 
-The script reads the private key into the backend process environment and
-starts FastAPI on `127.0.0.1:8002`. The key is never sent to the browser or
-copied into this repository. The file must contain only the key.
+Each file must contain only its key. `-GeminiKeyFile` is optional. The script
+reads keys into the backend process environment and starts FastAPI on
+`127.0.0.1:8002`. Keys are never sent to the browser or copied into this
+repository.
 
 In the second:
 
@@ -67,12 +68,18 @@ Python suite is run from the repository root with `python -m pytest -q`.
 
 ## Current scope
 
-- Three live tracks: Software Engineering, Machine Learning, Agentic AI.
+- Five live tracks: Backend Engineering, Software Engineering, Machine Learning,
+  Agentic AI, and Data Engineering.
 - English, Telugu, Hindi; three questions per session.
 - Gnani Prisma v2.5 streaming recognition and Gnani Timbre v2.5 voice.
-- Adaptive follow-ups use the backend's deterministic policy. Numeric feedback
-  is an uncalibrated transcript rubric. Evon and translation are unavailable
-  with the current STT/TTS-only key.
+- Verified resume and GitHub evidence seeds personalized questions. Optional
+  Gemini refinement rewrites the project question when configured and the
+  candidate opts in to sharing extracted technical details; provider
+  failure or quota exhaustion retains the authored question. The resume file
+  picker accepts PDF, DOCX, TXT, MD, and JSON up to 5 MB. PDF/DOCX text extraction
+  occurs in backend memory and the original file is not saved. Numeric feedback is
+  an uncalibrated transcript rubric. Evon and translation are unavailable with
+  the current STT/TTS-only key.
 - Reports are stored in the backend SQLite database. The browser stores a
   local index for history and progress; clearing browser data removes that
   index, while backend retention follows its own configuration.

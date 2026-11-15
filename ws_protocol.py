@@ -93,6 +93,7 @@ class SessionStart(ProtocolMessage):
     endpointing_policy: str = "fixed"  # fixed, two_stage, adaptive
     resume_text: Optional[str] = None
     github_repo: Optional[str] = None
+    allow_gemini: bool = False
     target_questions: int = 3
     role: str = "Software Engineer"
     require_streaming: bool = False
