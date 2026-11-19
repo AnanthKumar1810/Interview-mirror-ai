@@ -41,6 +41,10 @@ The larger [paired human-recorded ASR engineering check](docs/ENGINEERING_ASR_EV
 
 ---
 
+## Experimental local LLM KV cache
+
+Opt in to [native llama.cpp KV prefix caching](docs/KV_CACHE.md) for bounded, session-aware conversational acknowledgment selection. The deterministic question bank and scoring remain authoritative; use the synthetic benchmark to measure cache reuse on your hardware.
+
 ## Current authenticated storage and noise benchmarking
 
 - [Authentication and durable SQLite](docs/AUTH_AND_STORAGE.md) — set `IM_AUTH_REQUIRED=true`, configure a random `IM_JWT_SECRET`, and use the signup form. With `IM_ENV=production`, invalid auth configuration fails closed.

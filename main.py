@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from coach import QUESTION_BANK, TRACK_LABELS, evaluate
 from gnani_semantic import Case, LocalEvon, evaluate_paths, ProviderUnavailable, InvalidModelOutput
 from adaptive import select_followup
+from kv_cache import CACHE as KV_CACHE, configured_url as kv_cache_url
 from gnani import GnaniClient, GnaniError
 from audio_tools import ALLOWED_AUDIO_MIME, MAX_AUDIO_BYTES, inspect_pcm16_wav
 from speech_enhancement import enhance_pcm16_wav
@@ -254,6 +255,7 @@ def status():
             "stt_model": "prisma-v2.5", "tts_model": "timbre-v2.5",
             "evon_local_configured": bool(os.getenv("GNANI_EVON_BASE_URL", "").strip()),
             "gemini_question_refinement_configured": bool(os.getenv("GEMINI_API_KEY", "").strip()),
+            "kv_cache_configured": bool(kv_cache_url()),
             "neural_enhancement_dependency_present": __import__("importlib.util", fromlist=["find_spec"]).find_spec("df") is not None,
             "tracks": TRACK_LABELS, "languages": SUPPORTED_LANGUAGES,
             "mode": "gnani_live" if gnani_on else "local_demo",
@@ -399,8 +401,17 @@ def answer(request: AnswerRequest, user_id: str | None = Depends(current_owner))
             question_index=session.question_index - 1,
             track=session.track,
         )
+        spoken_turn, ack, cache_stats = KV_CACHE.bridge(
+            owner_id=user_id, session_id=request.session_id,
+            track=session.track, language=session.language, answers=session.answers,
+            question=current_question(session) or "", fallback=(spoken_turn, ack),
+        )
         conversational_prompt = spoken_turn
         feedback["conversational_acknowledgment"] = ack
+        if cache_stats["status"] != "disabled":
+            feedback["kv_cache"] = cache_stats
+    else:
+        KV_CACHE.release(user_id, request.session_id)
 
     persist_session(request.session_id, session, user_id)
     return {"transcript": text, "feedback": feedback, "completed": done,
@@ -603,6 +614,7 @@ def diagnostics(user_id: str | None = Depends(current_owner)):
 def delete_session(session_id: str, user_id: str | None = Depends(current_owner)):
     get_session(session_id, user_id)
     STORE.delete_session(session_id, user_id)
+    KV_CACHE.release(user_id, session_id)
     return {"deleted": True, "session_id": session_id}
 
 
@@ -629,6 +641,7 @@ def correct_session_answer(session_id: str, request: CorrectionRequest, user_id:
     new_feedback = evaluate_for_app(corrected, spec, session.language, session.track, fixed_index)
     ans["feedback"] = new_feedback
     persist_session(session_id, session, user_id)
+    KV_CACHE.release(user_id, session_id)
     return {"corrected": True, "answer": ans, "session_id": session_id}
 
 

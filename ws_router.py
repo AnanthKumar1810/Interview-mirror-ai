@@ -72,6 +72,7 @@ from conversational_engine import (
 from gnani_streaming import PrismaStreamingClient, TimbreStreamingClient
 from gnani import GnaniClient, VOICE
 from metrics import SessionMetrics
+from kv_cache import CACHE as KV_CACHE
 
 logger = logging.getLogger(__name__)
 
@@ -1083,7 +1084,14 @@ async def _finalize_turn(ctx: _SessionContext) -> None:
                     question_index=sm.question_index - 1,
                     track=sm.track,
                 )
-                # Supervised TTS dispatch — dynamically speaks acknowledgment + responsive follow-up
+                spoken_turn, ack, cache_stats = await asyncio.to_thread(
+                    KV_CACHE.bridge, owner_id=ctx.owner_id, session_id=ctx.session_id,
+                    track=sm.track, language=sm.language, answers=sm.answers,
+                    question=next_question, fallback=(spoken_turn, ack),
+                )
+                if cache_stats['status'] != 'disabled':
+                    ctx.log_event('kv_cache_inference', cache_stats)
+                # Supervised TTS dispatch — preserve the authoritative next question.
                 _dispatch_tts(ctx, spoken_turn)
 
         except InvalidTransition as exc:
@@ -1421,6 +1429,7 @@ async def interview_ws(ws: WebSocket) -> None:
     finally:
         ctx.active = False
         ctx.noise_eval_audio.clear()
+        await asyncio.to_thread(KV_CACHE.release, ctx.owner_id, ctx.session_id)
         if ctx.active_tts_task and not ctx.active_tts_task.done():
             ctx.active_tts_task.cancel()
         for t in tasks:
