@@ -61,10 +61,27 @@ describe("realtime interview control events", () => {
   });
 
   it("ignores stale RTC transcripts and turn states after advancing", () => {
-    receiveRealtimeMessage({ type: "session_ack", session_id: "test-session", question: "First", question_number: 1 });
-    receiveRealtimeMessage({ type: "turn_state", state: "Listening", raw_state: "listening", question: "Second", question_number: 2 });
+    receiveRealtimeMessage({
+      type: "session_ack",
+      session_id: "test-session",
+      question: "First",
+      question_number: 1,
+    });
+    receiveRealtimeMessage({
+      type: "turn_state",
+      state: "Listening",
+      raw_state: "listening",
+      question: "Second",
+      question_number: 2,
+    });
     receiveRealtimeMessage({ type: "transcript", text: "old audio", question_number: 1 });
-    receiveRealtimeMessage({ type: "turn_state", state: "Listening", raw_state: "listening", question: "First", question_number: 1 });
+    receiveRealtimeMessage({
+      type: "turn_state",
+      state: "Listening",
+      raw_state: "listening",
+      question: "First",
+      question_number: 1,
+    });
     expect(getRealtimeState().question).toBe("Second");
     expect(getRealtimeState().transcript).not.toBe("old audio");
   });

@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "dataset_id": "synthetic-practice-review-queue-v1",
-  "dataset_sha256": "c53ab868b3c85153e10e537b81d05a8c48f7026e2c1d8eaab92d1ef377cb68e4",
+  "dataset_id": "synthetic-practice-review-queue-v2",
+  "dataset_sha256": "209d58b0380135d31ea8124a902ae901bacfb702e66411d1692a099805739bbf",
   "scorer_name": "risk_aware_rubric_v3",
   "summary": {
-    "n_cases": 9,
+    "n_cases": 13,
     "repeat_count": 5,
-    "total_scoring_calls": 45,
+    "total_scoring_calls": 65,
     "mean_within_case_score_std": 0.0,
     "max_within_case_score_std": 0.0,
     "human_reviewed_cases": 0,
@@ -43,8 +43,8 @@
         }
       },
       "latency_ms": {
-        "mean": 0.4655100000491075,
-        "p95_nearest_rank": 1.644077000037214
+        "mean": 1.646840013563633,
+        "p95_nearest_rank": 5.454500089399517
       },
       "human_reference": null
     },
@@ -76,8 +76,8 @@
         }
       },
       "latency_ms": {
-        "mean": 0.5645090000143682,
-        "p95_nearest_rank": 2.1471290001500165
+        "mean": 1.5056400327011943,
+        "p95_nearest_rank": 5.234700045548379
       },
       "human_reference": null
     },
@@ -109,8 +109,8 @@
         }
       },
       "latency_ms": {
-        "mean": 0.2509986001314246,
-        "p95_nearest_rank": 0.5011640000702755
+        "mean": 0.7627199869602919,
+        "p95_nearest_rank": 0.8666999638080597
       },
       "human_reference": null
     },
@@ -142,8 +142,8 @@
         }
       },
       "latency_ms": {
-        "mean": 0.2870339999390126,
-        "p95_nearest_rank": 0.4860139997617807
+        "mean": 0.9589200373739004,
+        "p95_nearest_rank": 1.29360007122159
       },
       "human_reference": null
     },
@@ -175,8 +175,8 @@
         }
       },
       "latency_ms": {
-        "mean": 0.3385752001122455,
-        "p95_nearest_rank": 0.4397950001475692
+        "mean": 0.746940029785037,
+        "p95_nearest_rank": 0.8432000176981091
       },
       "human_reference": null
     },
@@ -208,8 +208,8 @@
         }
       },
       "latency_ms": {
-        "mean": 0.4210807999697863,
-        "p95_nearest_rank": 0.9632029996282654
+        "mean": 0.9130799677222967,
+        "p95_nearest_rank": 1.3287999900057912
       },
       "human_reference": null
     },
@@ -241,8 +241,8 @@
         }
       },
       "latency_ms": {
-        "mean": 0.2657107999766595,
-        "p95_nearest_rank": 0.3760730000976764
+        "mean": 0.8858599932864308,
+        "p95_nearest_rank": 0.9500000160187483
       },
       "human_reference": null
     },
@@ -274,8 +274,8 @@
         }
       },
       "latency_ms": {
-        "mean": 0.5412421999608341,
-        "p95_nearest_rank": 1.1005970000041998
+        "mean": 0.8282599505037069,
+        "p95_nearest_rank": 2.049999893642962
       },
       "human_reference": null
     },
@@ -307,8 +307,140 @@
         }
       },
       "latency_ms": {
-        "mean": 0.22554639999725623,
-        "p95_nearest_rank": 0.5323870000211173
+        "mean": 0.6582799833267927,
+        "p95_nearest_rank": 1.3447999954223633
+      },
+      "human_reference": null
+    },
+    {
+      "id": "agentic_te_en_codemix",
+      "track": "agentic",
+      "language": "te-IN",
+      "review_status": "unreviewed",
+      "mean_score": 84.0,
+      "score_std": 0.0,
+      "min_score": 84.0,
+      "max_score": 84.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 25.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 30.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 16.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 13.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 1.0636199731379747,
+        "p95_nearest_rank": 1.1181998997926712
+      },
+      "human_reference": null
+    },
+    {
+      "id": "ai_hi_en_codemix",
+      "track": "ai",
+      "language": "hi-IN",
+      "review_status": "unreviewed",
+      "mean_score": 84.0,
+      "score_std": 0.0,
+      "min_score": 84.0,
+      "max_score": 84.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 25.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 30.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 16.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 13.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 1.3547800248488784,
+        "p95_nearest_rank": 2.9953999910503626
+      },
+      "human_reference": null
+    },
+    {
+      "id": "software_te_en_codemix",
+      "track": "software",
+      "language": "te-IN",
+      "review_status": "unreviewed",
+      "mean_score": 88.0,
+      "score_std": 0.0,
+      "min_score": 88.0,
+      "max_score": 88.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 25.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 30.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 20.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 13.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.8107200264930725,
+        "p95_nearest_rank": 0.938400044105947
+      },
+      "human_reference": null
+    },
+    {
+      "id": "software_hi_en_codemix",
+      "track": "software",
+      "language": "hi-IN",
+      "review_status": "unreviewed",
+      "mean_score": 84.0,
+      "score_std": 0.0,
+      "min_score": 84.0,
+      "max_score": 84.0,
+      "dimensions": {
+        "relevance": {
+          "mean": 25.0,
+          "std": 0.0
+        },
+        "technical_coverage": {
+          "mean": 30.0,
+          "std": 0.0
+        },
+        "clarity": {
+          "mean": 16.0,
+          "std": 0.0
+        },
+        "evidence": {
+          "mean": 13.0,
+          "std": 0.0
+        }
+      },
+      "latency_ms": {
+        "mean": 0.9580599842593074,
+        "p95_nearest_rank": 1.3436999870464206
       },
       "human_reference": null
     }
@@ -322,7 +454,7 @@
     "passed": true,
     "allowed_absolute_drift": 0.0,
     "regressed_cases": [],
-    "compared_cases": 9
+    "compared_cases": 13
   },
   "gate": {
     "passed": true,

@@ -135,7 +135,8 @@ export function receiveRealtimeMessage(msg: WireMessage | undefined) {
       transcript: nextNumber !== state.questionNumber ? "" : state.transcript,
     });
   } else if (msg.type === "transcript") {
-    if (typeof msg["question_number"] === "number" && msg["question_number"] < state.questionNumber) return;
+    if (typeof msg["question_number"] === "number" && msg["question_number"] < state.questionNumber)
+      return;
     update({ transcript: String(msg["text"] ?? "") });
   } else if (msg.type === "error") {
     update({ error: String(msg["message"] ?? "Unknown interview error") });
@@ -166,8 +167,9 @@ export async function startRealtime(setup: SetupDraft): Promise<string> {
   if (setup.voiceTransport === "livekit") {
     state = initial;
     notify();
-    const rtc = new RtcInterviewClient(receiveRealtimeMessage,
-      () => update({ connected: false, captureReady: false, status: "Disconnected" }));
+    const rtc = new RtcInterviewClient(receiveRealtimeMessage, () =>
+      update({ connected: false, captureReady: false, status: "Disconnected" }),
+    );
     rtcClient = rtc;
     try {
       const id = await rtc.connect(setup, trackForDomain(setup.domainId));

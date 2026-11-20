@@ -9,8 +9,10 @@ export class RtcInterviewClient {
   private audio = new Set<HTMLMediaElement>();
   private closed = false;
 
-  constructor(private receive: (message: Control) => void,
-              private disconnected: () => void) {
+  constructor(
+    private receive: (message: Control) => void,
+    private disconnected: () => void,
+  ) {
     this.room.on(RoomEvent.DataReceived, (bytes, _participant, _kind, topic) => {
       if (this.closed || topic !== "im.control") return;
       try {
@@ -42,21 +44,27 @@ export class RtcInterviewClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        track, language: setup.languageCode, target_questions: setup.questionTarget || 3,
-        role: setup.targetRole || "Software Engineer", github_repo: setup.github || null,
-        resume_text: setup.highlights || null, allow_gemini: false,
+        track,
+        language: setup.languageCode,
+        target_questions: setup.questionTarget || 3,
+        role: setup.targetRole || "Software Engineer",
+        github_repo: setup.github || null,
+        resume_text: setup.highlights || null,
+        allow_gemini: false,
       }),
     });
     if (!response.ok) {
-      const body = await response.json().catch(() => ({})) as { detail?: string };
+      const body = (await response.json().catch(() => ({}))) as { detail?: string };
       throw new Error(body.detail || "Could not prepare RTC session");
     }
-    const config = await response.json() as { url: string; token: string; session_id: string };
+    const config = (await response.json()) as { url: string; token: string; session_id: string };
     try {
       await this.room.connect(config.url, config.token);
       await this.room.startAudio();
       await this.room.localParticipant.setMicrophoneEnabled(true, {
-        echoCancellation: true, noiseSuppression: true, autoGainControl: true,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
       });
       return config.session_id;
     } catch (error) {

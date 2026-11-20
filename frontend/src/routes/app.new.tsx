@@ -231,7 +231,13 @@ function NewInterview() {
                     <OptionCard
                       key={l.value}
                       selected={(setup.questionTarget || 3) === l.value}
-                      onClick={() => actions.updateSetup({ questionTarget: l.value, voiceTransport: l.value === 3 ? (setup.voiceTransport ?? "websocket") : "websocket" })}
+                      onClick={() =>
+                        actions.updateSetup({
+                          questionTarget: l.value,
+                          voiceTransport:
+                            l.value === 3 ? (setup.voiceTransport ?? "websocket") : "websocket",
+                        })
+                      }
                     >
                       <div className="flex items-center justify-between">
                         <p className="font-semibold">{l.title}</p>
@@ -249,19 +255,30 @@ function NewInterview() {
                 <div className="mt-5 rounded-xl border border-border bg-background/40 p-4">
                   <Label className="mb-3 block text-sm font-medium">Voice connection</Label>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <OptionCard selected={setup.voiceTransport !== "livekit"}
-                      onClick={() => actions.updateSetup({ voiceTransport: "websocket" })}>
+                    <OptionCard
+                      selected={setup.voiceTransport !== "livekit"}
+                      onClick={() => actions.updateSetup({ voiceTransport: "websocket" })}
+                    >
                       <span className="text-sm font-medium">Standard voice</span>
                     </OptionCard>
-                    <OptionCard selected={setup.voiceTransport === "livekit"}
-                      onClick={() => actions.updateSetup({ voiceTransport: "livekit", questionTarget: 3, compareNoiseEnhancement: false })}>
+                    <OptionCard
+                      selected={setup.voiceTransport === "livekit"}
+                      onClick={() =>
+                        actions.updateSetup({
+                          voiceTransport: "livekit",
+                          questionTarget: 3,
+                          compareNoiseEnhancement: false,
+                        })
+                      }
+                    >
                       <span className="text-sm font-medium">LiveKit WebRTC (experimental)</span>
                     </OptionCard>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
                     LiveKit requires a configured RTC server and worker. English and Hindi use
                     semantic turn detection; Telugu uses voice activity detection. RTC currently
-                    supports three questions and uses deterministic questions without Gemini refinement.
+                    supports three questions and uses deterministic questions without Gemini
+                    refinement.
                   </p>
                 </div>
                 <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background/40 p-4">
