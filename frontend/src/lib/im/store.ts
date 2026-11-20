@@ -22,6 +22,7 @@ export const DEFAULT_SETUP: SetupDraft = {
   highlights: "",
   useGemini: false,
   compareNoiseEnhancement: false,
+  voiceTransport: "websocket",
 };
 
 const initialState: AppState = {

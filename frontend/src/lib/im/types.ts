@@ -78,6 +78,7 @@ export interface SetupDraft {
   highlights: string;
   useGemini?: boolean;
   compareNoiseEnhancement?: boolean;
+  voiceTransport?: "websocket" | "livekit";
 }
 
 export interface Profile {

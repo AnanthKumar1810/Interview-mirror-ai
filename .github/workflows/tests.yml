@@ -67,3 +67,17 @@ jobs:
             --output reports/risk_aware_ci.json
       - name: Gate synthetic adversarial failures (not human MAE)
         run: python -m eval_harness.compare_robust --output reports/robust_ci.json
+
+  rtc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install optional RTC dependencies
+        run: python -m pip install -r requirements-livekit.txt -r requirements-dev.txt
+      - name: Import the RTC worker and run offline protocol tests
+        run: |
+          python -c 'import rtc_agent; print("RTC worker imported")'
+          python -m pytest -q tests/test_rtc_policy.py tests/test_ws_protocol.py tests/test_handsfree_turn_regressions.py

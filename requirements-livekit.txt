@@ -1,0 +1,7 @@
+-r requirements.txt
+# Keep the optional RTC stack on the same tested LiveKit minor release.
+livekit-agents==1.8.13
+livekit-api==1.2.3
+livekit-plugins-gnani==1.8.13
+livekit-plugins-silero==1.8.13
+livekit-plugins-turn-detector==1.8.13

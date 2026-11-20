@@ -21,6 +21,12 @@ opt in to Gemini refinement. Scoring remains deterministic practice feedback,
 not an expert-calibrated semantic evaluator. Evon and translation access are
 unavailable with the current Gnani STT/TTS-only key.
 
+**Optional RTC path:** The Format step can opt into a separate LiveKit Agents
+WebRTC pipeline with the official Gnani Prisma/Timbre plugin, local Silero VAD,
+English/Hindi semantic turn detection and Telugu VAD endpointing. The existing
+FastAPI/Gnani WebSocket pipeline stays the default. RTC setup, security,
+limitations and a device-level smoke test are in [the RTC guide](docs/RTC_LIVEKIT.md).
+
 See [the 2026-11-14 live first-answer fix and verification](docs/LIVE_TURN_FIX_2026-11-14.md) for the current hands-free streaming status and remaining device-level tests.
 
 **ClearView realtime snapshot, 15 Nov 2026.** This folder combines the FastAPI/Gnani speech backend with the ClearView React frontend. Backend speech uses Gnani Prisma STT and Timbre TTS; current interview scoring and follow-up selection are deterministic practice logic, not a Gnani semantic evaluator.

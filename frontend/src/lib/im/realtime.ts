@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { SetupDraft } from "./types";
+import { RtcInterviewClient } from "./rtc";
 
 type WireMessage = { type: string; [key: string]: unknown };
 type Client = EventTarget & {
@@ -61,6 +62,7 @@ const initial: RealtimeState = {
 };
 let state = initial;
 let client: Client | null = null;
+let rtcClient: RtcInterviewClient | null = null;
 let audioProcessingListener: ((event: Event) => void) | null = null;
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((listener) => listener());
@@ -103,6 +105,7 @@ function handle(event: Event) {
 export function receiveRealtimeMessage(msg: WireMessage | undefined) {
   if (!msg) return;
   if (msg.type === "session_ack") {
+    if (state.sessionId && state.sessionId !== String(msg["session_id"] ?? "")) return;
     update({
       sessionId: String(msg["session_id"] ?? ""),
       question: String(msg["question"] ?? ""),
@@ -113,6 +116,7 @@ export function receiveRealtimeMessage(msg: WireMessage | undefined) {
   } else if (msg.type === "turn_state") {
     const nextQuestion = String(msg["question"] ?? "");
     const nextNumber = Number(msg["question_number"] ?? state.questionNumber);
+    if (nextNumber < state.questionNumber) return;
     const feedback = msg["feedback"] as Record<string, unknown> | undefined;
     const turnCompleted = feedback && typeof feedback === "object" && state.transcript.trim();
     const turns =
@@ -131,6 +135,7 @@ export function receiveRealtimeMessage(msg: WireMessage | undefined) {
       transcript: nextNumber !== state.questionNumber ? "" : state.transcript,
     });
   } else if (msg.type === "transcript") {
+    if (typeof msg["question_number"] === "number" && msg["question_number"] < state.questionNumber) return;
     update({ transcript: String(msg["text"] ?? "") });
   } else if (msg.type === "error") {
     update({ error: String(msg["message"] ?? "Unknown interview error") });
@@ -157,7 +162,23 @@ export function receiveRealtimeMessage(msg: WireMessage | undefined) {
 }
 
 export async function startRealtime(setup: SetupDraft): Promise<string> {
-  if (client) throw new Error("An interview is already in progress.");
+  if (client || rtcClient) throw new Error("An interview is already in progress.");
+  if (setup.voiceTransport === "livekit") {
+    state = initial;
+    notify();
+    const rtc = new RtcInterviewClient(receiveRealtimeMessage,
+      () => update({ connected: false, captureReady: false, status: "Disconnected" }));
+    rtcClient = rtc;
+    try {
+      const id = await rtc.connect(setup, trackForDomain(setup.domainId));
+      update({ sessionId: id, connected: true, captureReady: true, status: "Connected" });
+      return id;
+    } catch (error) {
+      rtc.disconnect();
+      rtcClient = null;
+      throw error;
+    }
+  }
   await loadClient();
   if (!window.RealtimeInterviewClient) throw new Error("Audio client did not load.");
   const next = new window.RealtimeInterviewClient();
@@ -228,8 +249,11 @@ export function preloadRealtimeClient() {
 
 export function endRealtime() {
   client?.endInterview();
+  rtcClient?.disconnect();
 }
 export function disconnectRealtime() {
+  rtcClient?.disconnect();
+  rtcClient = null;
   if (client && audioProcessingListener)
     client.removeEventListener("audio-processing", audioProcessingListener);
   audioProcessingListener = null;

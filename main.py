@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import json
 import uuid
 import time
 import threading
@@ -177,6 +178,50 @@ class StartRequest(BaseModel):
     target_questions: int = 3
     role: str = "Software Engineer"
     allow_gemini: bool = False
+
+
+@app.post("/api/rtc/session")
+async def start_rtc_session(request: StartRequest, user_id: str | None = Depends(current_owner)):
+    """Create an owner-scoped interview and a short-lived, room-scoped RTC token."""
+    if os.getenv("IM_LIVEKIT_ENABLED", "false").lower() != "true":
+        raise HTTPException(503, "RTC interviews are disabled")
+    if not all(os.getenv(key) for key in ("LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "GNANI_API_KEY")):
+        raise HTTPException(503, "RTC or Gnani credentials are incomplete")
+    if request.track not in QUESTION_BANK or request.language not in SUPPORTED_LANGUAGES:
+        raise HTTPException(422, "Unsupported track or language")
+    if request.target_questions != 3:
+        raise HTTPException(422, "RTC currently supports three-question interviews")
+    if request.allow_gemini:
+        raise HTTPException(422, "RTC interview requires Gnani-only speech and deterministic questions")
+    _reserve_provider_call()
+    # This path intentionally shares the deterministic questions, scoring and
+    # persistent owner checks with the established WebSocket interview.
+    from livekit import api
+    from rtc_policy import turn_mode
+    from datetime import timedelta
+    created = await run_in_threadpool(start_session, request, user_id)
+    session_id = created["session_id"]
+    room = f"im-{session_id}"
+    try:
+        async with api.LiveKitAPI() as lk:
+            await lk.room.create_room(api.CreateRoomRequest(name=room, empty_timeout=120, max_participants=2))
+            await lk.agent_dispatch.create_dispatch(api.CreateAgentDispatchRequest(
+                room=room,
+                agent_name="interview-mirror",
+                metadata=json.dumps({"session_id": session_id, "owner_id": user_id}),
+            ))
+        token = (api.AccessToken()
+                 .with_identity(f"candidate-{uuid.uuid4()}")
+                 .with_ttl(timedelta(minutes=30))
+                 .with_grants(api.VideoGrants(room_join=True, room=room,
+                                              can_publish=True, can_subscribe=True,
+                                              can_publish_data=True))
+                 .to_jwt())
+    except Exception:
+        STORE.delete_session(session_id, user_id)
+        raise HTTPException(503, "Could not prepare RTC room")
+    return {**created, "url": os.environ["LIVEKIT_URL"], "token": token,
+            "turn_detection": turn_mode(request.language)}
 
 class AnswerRequest(BaseModel):
     session_id: str
