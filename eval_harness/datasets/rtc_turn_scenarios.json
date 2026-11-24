@@ -1,0 +1,154 @@
+[
+  {
+    "id": "brief-acknowledgment",
+    "events": [
+      {
+        "kind": "agent_state",
+        "state": "speaking",
+        "at": 0
+      },
+      {
+        "kind": "user_state",
+        "state": "speaking",
+        "at": 1
+      },
+      {
+        "kind": "agent_state",
+        "state": "listening",
+        "at": 1.15
+      },
+      {
+        "kind": "false_interruption"
+      },
+      {
+        "kind": "transcript",
+        "text": "hmm"
+      }
+    ],
+    "expected_action": "backchannel",
+    "expected_cancellations": 0
+  },
+  {
+    "id": "repeat-during-question",
+    "events": [
+      {
+        "kind": "agent_state",
+        "state": "speaking",
+        "at": 0
+      },
+      {
+        "kind": "user_state",
+        "state": "speaking",
+        "at": 1
+      },
+      {
+        "kind": "interruption_detected"
+      },
+      {
+        "kind": "agent_state",
+        "state": "listening",
+        "at": 1.22
+      },
+      {
+        "kind": "transcript",
+        "text": "Please repeat the question."
+      }
+    ],
+    "expected_action": "repeat",
+    "expected_cancellations": 1
+  },
+  {
+    "id": "long-answer-barge-in",
+    "events": [
+      {
+        "kind": "agent_state",
+        "state": "speaking",
+        "at": 0
+      },
+      {
+        "kind": "user_state",
+        "state": "speaking",
+        "at": 1
+      },
+      {
+        "kind": "agent_state",
+        "state": "idle",
+        "at": 1.35
+      },
+      {
+        "kind": "transcript",
+        "text": "I built and tested an API"
+      }
+    ],
+    "expected_action": "answer",
+    "expected_cancellations": 1
+  },
+  {
+    "id": "short-valid-answer",
+    "events": [
+      {
+        "kind": "user_state",
+        "state": "speaking",
+        "at": 0
+      },
+      {
+        "kind": "user_state",
+        "state": "listening",
+        "at": 0.5
+      },
+      {
+        "kind": "transcript",
+        "text": "No"
+      },
+      {
+        "kind": "agent_state",
+        "state": "speaking",
+        "at": 1.1
+      }
+    ],
+    "expected_action": "answer",
+    "expected_cancellations": 0
+  },
+  {
+    "id": "qualified-okay-is-answer",
+    "events": [
+      {
+        "kind": "agent_state",
+        "state": "speaking",
+        "at": 0
+      },
+      {
+        "kind": "user_state",
+        "state": "speaking",
+        "at": 0.8
+      },
+      {
+        "kind": "agent_state",
+        "state": "idle",
+        "at": 1.03
+      },
+      {
+        "kind": "transcript",
+        "text": "Okay, but I disagree"
+      }
+    ],
+    "expected_action": "answer",
+    "expected_cancellations": 1
+  },
+  {
+    "id": "empty-transcript",
+    "events": [
+      {
+        "kind": "user_state",
+        "state": "speaking",
+        "at": 0
+      },
+      {
+        "kind": "transcript",
+        "text": "  "
+      }
+    ],
+    "expected_action": "empty",
+    "expected_cancellations": 0
+  }
+]
