@@ -81,3 +81,14 @@ actual microphone and speaker:
 
 Offline tests and a browser build verify code paths, not Gnani authentication,
 an active LiveKit worker, a physical device, latency or real audio behavior.
+
+## RTC turn-taking lab
+
+The optional worker records overlapping user/agent speech state until the
+final transcript, ignores short acknowledgments while speaking, accepts short
+answers, and replays a pending question when asked to repeat. If VAD already
+stopped a question on a backchannel, it restarts the question from the beginning.
+The worker may cancel a still-active SpeechHandle on a substantive interruption.
+VAD false-interruption recovery is configured for 1.2 seconds. Aggregate-only
+callback timing and counts are saved to .data/rtc-turn-lab/. These are not
+microphone-to-speaker latency. See docs/RTC_TURN_TAKING_LAB.md.

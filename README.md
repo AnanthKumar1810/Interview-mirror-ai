@@ -26,6 +26,8 @@ WebRTC pipeline with the official Gnani Prisma/Timbre plugin, local Silero VAD,
 English/Hindi semantic turn detection and Telugu VAD endpointing. The existing
 FastAPI/Gnani WebSocket pipeline stays the default. RTC setup, security,
 limitations and a device-level smoke test are in [the RTC guide](docs/RTC_LIVEKIT.md).
+The [RTC turn-taking lab](docs/RTC_TURN_TAKING_LAB.md) adds scripted replay,
+SpeechHandle cancellation and anonymous callback metrics; replay timings are synthetic.
 
 See [the 2026-11-14 live first-answer fix and verification](docs/LIVE_TURN_FIX_2026-11-14.md) for the current hands-free streaming status and remaining device-level tests.
 

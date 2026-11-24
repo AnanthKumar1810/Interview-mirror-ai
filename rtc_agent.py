@@ -17,7 +17,8 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 import main
 from gnani import VOICE
-from rtc_policy import TurnLedger, is_backchannel, turn_mode
+from rtc_policy import TurnLedger, turn_mode
+from rtc_turn_lab import TurnLab, save_summary
 
 load_dotenv(".env")
 log = logging.getLogger(__name__)
@@ -47,6 +48,8 @@ class InterviewAgent(Agent):
         self.ledger = TurnLedger()
         self._lock = asyncio.Lock()
         self._speaking = False
+        self._current_question = initial_question
+        self.turn_lab = TurnLab()
 
     async def send(self, data: dict) -> None:
         if self.ledger.closed:
@@ -56,9 +59,21 @@ class InterviewAgent(Agent):
 
     async def on_user_turn_completed(self, turn_ctx, new_message) -> None:
         text = (new_message.text_content or "").strip()
-        if is_backchannel(text, self._speaking) or len(text) < 3:
+        action = self.turn_lab.classify(text)
+        if action == "empty":
+            return
+        if action == "backchannel":
+            # VAD may have stopped audio before the final transcript arrives.
+            handle = self.turn_lab.active_speech
+            if handle is not None and getattr(handle, "interrupted", False) and not self.ledger.closed:
+                self.turn_lab.active_speech = self.session.say(self._current_question)
             return
         async with self._lock:
+            if self.ledger.closed:
+                return
+            if action == "repeat":
+                self.turn_lab.active_speech = self.session.say(self._current_question)
+                return  # Never score a request to repeat the question.
             question_number = self.ledger.question_number
             generation = self.ledger.start(question_number, text)
             if generation is None:
@@ -73,6 +88,8 @@ class InterviewAgent(Agent):
                 return
             if not self.ledger.advance(generation, question_number):
                 return
+            if result.get("next_question"):
+                self._current_question = result["next_question"]
             await self.send({"type": "transcript", "text": text, "is_final": True,
                              "question_number": question_number})
             await self.send({"type": "turn_state", "state": "Feedback ready",
@@ -85,13 +102,15 @@ class InterviewAgent(Agent):
                 # The SDK cancels the active SpeechHandle and TTS stream on a real
                 # interruption. The generation check suppresses late application output.
                 if self.ledger.valid_audio(generation):
-                    self.session.say(result["conversational_prompt"] or result["next_question"])
+                    self.turn_lab.active_speech = self.session.say(
+                        result["conversational_prompt"] or result["next_question"])
 
     async def _finish(self, generation: int) -> None:
         if not self.ledger.valid_audio(generation):
             return
         try:
             handle = self.session.say("Thank you. Your practice report is ready.")
+            self.turn_lab.active_speech = handle
             await handle.wait_for_playout()
             if self.ledger.valid_audio(generation):
                 await self.send({"type": "turn_state", "state": "Completed",
@@ -125,7 +144,9 @@ async def entrypoint(ctx: JobContext) -> None:
         turn_handling=TurnHandlingOptions(
             turn_detection=detector,
             endpointing={"min_delay": 0.35, "max_delay": 2.5},
-            interruption={"mode": "adaptive" if adaptive else "vad"},
+            interruption={"mode": "adaptive" if adaptive else "vad",
+                          "false_interruption_timeout": 1.2,
+                          "resume_false_interruption": True},
             preemptive_generation={"enabled": False},
         ),
     )
@@ -144,6 +165,19 @@ async def entrypoint(ctx: JobContext) -> None:
     @session.on("agent_state_changed")
     def _state(event):
         agent._speaking = event.new_state == "speaking"
+        agent.turn_lab.agent_state(event.new_state)
+
+    @session.on("user_state_changed")
+    def _user_state(event):
+        agent.turn_lab.user_state(event.new_state)
+
+    @session.on("user_interruption_detected")
+    def _interruption(_event):
+        agent.turn_lab.interruption_detected()
+
+    @session.on("agent_false_interruption")
+    def _false_interruption(_event):
+        agent.turn_lab.false_interruption()
 
     await ctx.connect()
     await ctx.wait_for_participant()
@@ -151,12 +185,21 @@ async def entrypoint(ctx: JobContext) -> None:
     await agent.send({"type": "session_ack", "session_id": session_id,
                       "question": question, "question_number": 1,
                       "total_questions": 3, "turn_detection": turn_mode(language)})
-    session.say(question)
+    agent.turn_lab.active_speech = session.say(question)
     try:
         await stop.wait()
     finally:
         agent.ledger.close()
-        await session.aclose()
+        agent.turn_lab.cancel_speech()
+        try:
+            await session.aclose()
+        finally:
+            try:
+                save_summary(agent.turn_lab.summary(), language=language,
+                             mode="adaptive" if adaptive else "vad",
+                             folder=os.getenv("IM_RTC_TURN_METRICS_DIR", ".data/rtc-turn-lab"))
+            except OSError:
+                log.exception("Could not save anonymous RTC turn metrics")
 
 
 if __name__ == "__main__":
