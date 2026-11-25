@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from eval_harness.rtc_turn_replay import FakeSpeechHandle, replay_case, run_replay
 from rtc_turn_lab import TurnLab, percentile, save_summary
 
@@ -34,6 +36,16 @@ def test_backchannel_does_not_explicitly_cancel_speech():
     lab.user_state("speaking", at=2)
     assert lab.classify("Okay, but I disagree") == "answer"
     assert handle.interruptions == 1
+
+
+@pytest.mark.parametrize("request_text, answer_text", [
+    ("सवाल दोहराएँ।", "उन्होंने कहा, सवाल दोहराएँ।"),
+    ("ప్రశ్న మళ్లీ అడగండి!", "నేను మళ్లీ చెప్పండి అని అడిగాను."),
+])
+def test_localized_repeat_commands_are_distinct_from_answers(request_text, answer_text):
+    lab = TurnLab()
+    assert lab.classify(request_text) == "repeat"
+    assert lab.classify(answer_text) == "answer"
 
 
 def test_completed_or_already_interrupted_handle_is_not_counted():

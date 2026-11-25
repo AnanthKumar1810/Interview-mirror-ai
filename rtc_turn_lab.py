@@ -5,6 +5,7 @@ import json
 import math
 import os
 import time
+import unicodedata
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,6 +17,9 @@ REPEAT_COMMANDS = frozenset({
     "repeat", "repeat that", "please repeat", "repeat the question",
     "please repeat the question", "could you repeat the question",
     "can you repeat the question", "say that again", "please say that again",
+    "फिर से बोलिए", "दोबारा बताइए", "सवाल दोहराएं", "सवाल दोहराएँ",
+    "मुझे सवाल फिर से बताइए", "మళ్లీ చెప్పండి", "మళ్ళీ చెప్పండి",
+    "మరోసారి చెప్పండి", "ప్రశ్న మళ్లీ అడగండి", "మళ్ళీ అడగండి",
 })
 
 
@@ -69,7 +73,7 @@ class TurnLab:
         self.counts["sdk_false_interruptions"] += 1
 
     def classify(self, text: str) -> str:
-        normalized = " ".join(text.casefold().split()).strip(".,!?")
+        normalized = " ".join(unicodedata.normalize("NFC", text.casefold()).split()).strip(".,!?।॥ ")
         during_speech = self.overlapped or self.agent_speaking
         self.overlapped = False
         if not normalized:
