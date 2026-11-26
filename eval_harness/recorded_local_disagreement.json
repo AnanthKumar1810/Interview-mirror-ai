@@ -1,0 +1,13 @@
+{
+  "status": "controlled_local_experiment_not_human_ground_truth",
+  "model": "qwen2.5:3b",
+  "question": "How did you evaluate your model?",
+  "answer": "I used a test set to measure accuracy and then fixed the model.",
+  "rubric_score": 62,
+  "experimental_judge_score": 90,
+  "difference": 28,
+  "judge_quote": "I used a test set to measure accuracy",
+  "resolution": "review_required; deterministic practice score remains authoritative",
+  "note": "The judge's score was not calibrated against expert ratings."
+}
+
