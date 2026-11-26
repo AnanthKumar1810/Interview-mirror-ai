@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 from eval_harness.harness import compare_baseline, load_dataset, run_evaluation
@@ -19,7 +20,13 @@ def main() -> int:
     parser.add_argument("--max-within-case-std", type=float, default=None)
     parser.add_argument("--require-all-human-reviewed", action="store_true")
     parser.add_argument("--max-human-mae", type=float, default=None)
+    parser.add_argument("--require-evidence", action="store_true",
+                        help="Require at least one verbatim evidence item on every scoring call")
     args = parser.parse_args()
+    for name in ("max_absolute_score_drift", "max_within_case_std", "max_human_mae"):
+        value = getattr(args, name)
+        if value is not None and (not math.isfinite(value) or value < 0):
+            parser.error(f"--{name.replace('_', '-')} must be finite and nonnegative")
     dataset = load_dataset(args.dataset)
     if args.scorer == "robust":
         from robust_evaluation import evaluate_robust
@@ -36,6 +43,8 @@ def main() -> int:
         scorer_name = "transcript_heuristic_v2"
     report = run_evaluation(dataset, args.repeats, scorer, scorer_name)
     failures = []
+    if args.require_evidence and report["summary"]["calls_with_evidence"] != report["summary"]["total_scoring_calls"]:
+        failures.append("some scoring calls have no verbatim evidence")
     if args.compare:
         baseline = json.loads(Path(args.compare).read_text(encoding="utf-8"))
         result = compare_baseline(report, baseline, args.max_absolute_score_drift)

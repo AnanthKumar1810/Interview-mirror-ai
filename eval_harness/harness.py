@@ -15,6 +15,7 @@ from pathlib import Path
 
 from coach import QUESTION_BANK, evaluate
 from evaluation import DIMENSION_MAX
+from eval_harness.agreement import paired_score_metrics
 
 Scorer = Callable[[str, dict, str, str, int], dict]
 
@@ -85,6 +86,22 @@ def _p95(values: list[float]) -> float:
     return sorted(values)[math.ceil(len(values) * 0.95) - 1]
 
 
+def validate_evidence(result: dict, answer: str) -> list[dict]:
+    """Check citation membership, not whether a quote justifies a score."""
+    items = result.get("evidence_items", [])
+    if not isinstance(items, list):
+        raise ValueError("evidence_items must be a list")
+    for item in items:
+        if not isinstance(item, dict) or item.get("dimension") not in DIMENSION_MAX:
+            raise ValueError("Evidence must identify a valid rubric dimension")
+        quote = item.get("quote")
+        if not isinstance(quote, str) or not quote.strip() or quote not in answer:
+            raise ValueError("Evidence quote must occur verbatim in the candidate answer")
+        if not isinstance(item.get("observation"), str) or not item["observation"].strip():
+            raise ValueError("Evidence observation is required")
+    return items
+
+
 def run_evaluation(data: dict, repeats: int = 5, scorer: Scorer = evaluate,
                    scorer_name: str = "transcript_heuristic_v2") -> dict:
     if type(repeats) is not int or not 2 <= repeats <= 100:
@@ -95,12 +112,13 @@ def run_evaluation(data: dict, repeats: int = 5, scorer: Scorer = evaluate,
     cases = []
     for c in data["cases"]:
         question = QUESTION_BANK[c["track"]][c["question_index"]]
-        results, latencies = [], []
+        results, latencies, evidence_runs = [], [], []
         for _ in range(repeats):
             start = time.perf_counter()
             result = scorer(c["answer"], question, c["language"], c["track"], c["question_index"])
             elapsed_ms = (time.perf_counter() - start) * 1000
             _validate_result(result)
+            evidence_runs.append(validate_evidence(result, c["answer"]))
             latencies.append(elapsed_ms)
             results.append(result)
         scores = [float(r["score"]) for r in results]
@@ -115,7 +133,9 @@ def run_evaluation(data: dict, repeats: int = 5, scorer: Scorer = evaluate,
                 "min_score": min(scores), "max_score": max(scores),
                 "dimensions": dimensions,
                 "latency_ms": {"mean": statistics.mean(latencies), "p95_nearest_rank": _p95(latencies)},
-                "human_reference": None}
+                "human_reference": None,
+                "evidence_by_repeat": evidence_runs,
+                "calls_with_evidence": sum(bool(items) for items in evidence_runs)}
         if c.get("review_status") == "human_reviewed":
             ref = c["reference"]
             item["human_reference"] = {
@@ -134,6 +154,10 @@ def run_evaluation(data: dict, repeats: int = 5, scorer: Scorer = evaluate,
         "mean_within_case_score_std": statistics.mean(c["score_std"] for c in cases),
         "max_within_case_score_std": max(c["score_std"] for c in cases),
         "human_reviewed_cases": len(reviewed),
+        "human_score_agreement": paired_score_metrics(
+            [c["mean_score"] for c in reviewed],
+            [c["human_reference"]["score"] for c in reviewed]),
+        "calls_with_evidence": sum(c["calls_with_evidence"] for c in cases),
         "mae_to_human": statistics.mean(c["human_reference"]["absolute_error"] for c in reviewed) if reviewed else None,
         "signed_bias_to_human": statistics.mean(c["human_reference"]["signed_error"] for c in reviewed) if reviewed else None,
         "dimension_mae_to_human": {
@@ -148,6 +172,7 @@ def run_evaluation(data: dict, repeats: int = 5, scorer: Scorer = evaluate,
                 "No accuracy or bias conclusion without adequately adjudicated human references.",
                 "Deterministic heuristic repeats do not establish stochastic LLM scorer reliability.",
                 "Measured durations are local scorer-call wall times, not end-to-end STT/LLM/TTS latency.",
+                "Verbatim evidence membership does not prove that the quote supports the score or that a technical claim is true.",
             ]}
 
 
