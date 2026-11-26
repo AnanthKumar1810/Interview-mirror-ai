@@ -141,6 +141,10 @@ def evaluate_answer(transcript: str, question: dict, language: str, track: str |
         evidences.append(_evidence_record("clarity", text, reasoning, "Includes a causal explanation or reason."))
     elif sequencing:
         evidences.append(_evidence_record("clarity", text, sequencing, "Includes an ordering or sequence cue."))
+    elif text:
+        evidences.append(_evidence_record(
+            "clarity", text, (0, min(len(text), 80)),
+            f"Observed {len(words)} words and {clause_count} clauses; this is a length/structure heuristic, not verified clarity or correctness."))
     if actions:
         evidences.append(_evidence_record("evidence", text, actions, "Describes an action; the outcome is not independently verified."))
     if checked:

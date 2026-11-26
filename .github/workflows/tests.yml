@@ -53,6 +53,7 @@ jobs:
             --compare reports/phase1_baseline.json \
             --max-absolute-score-drift 0 \
             --max-within-case-std 0 \
+            --require-evidence \
             --output reports/phase1_ci.json
 
       - name: Gate improved rubric dimensional drift
@@ -64,7 +65,21 @@ jobs:
             --compare reports/risk_aware_baseline.json \
             --max-absolute-score-drift 0 \
             --max-within-case-std 0 \
+            --require-evidence \
             --output reports/risk_aware_ci.json
+      - name: Render evaluation workbench
+        run: |
+          python -m eval_harness.workbench --report reports/risk_aware_ci.json --output reports/workbench_ci.html
+          python -m eval_harness.agreement --dataset eval_harness/datasets/gold_holdout_template.json --output reports/human_agreement_ci.json
+      - name: Upload synthetic scoring reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-workbench-python-${{ matrix.python-version }}
+          path: |
+            reports/phase1_ci.json
+            reports/risk_aware_ci.json
+            reports/workbench_ci.html
+            reports/human_agreement_ci.json
       - name: Gate synthetic adversarial failures (not human MAE)
         run: python -m eval_harness.compare_robust --output reports/robust_ci.json
 
